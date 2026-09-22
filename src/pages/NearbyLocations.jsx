@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Pagination from '../components/common/Pagination';
 import { 
   MapPin, 
   Phone, 
@@ -10,6 +11,7 @@ import {
   Stethoscope, 
   Search 
 } from 'lucide-react';
+
 
 const LOCATIONS_DATA = [
   {
@@ -84,6 +86,10 @@ export default function NearbyLocations() {
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [search, setSearch] = useState('');
 
+  // Phân trang chuẩn codebase cho Địa điểm thú y & Spa
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(4);
+
   const filteredLocations = LOCATIONS_DATA.filter(loc => {
     if (filterType !== 'all' && loc.type !== filterType) return false;
     if (selectedDistrict !== 'all' && loc.district !== selectedDistrict) return false;
@@ -92,6 +98,11 @@ export default function NearbyLocations() {
     }
     return true;
   });
+
+  const paginatedLocations = React.useMemo(() => {
+    const start = (currentPage - 1) * limit;
+    return filteredLocations.slice(start, start + limit);
+  }, [filteredLocations, currentPage, limit]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -118,7 +129,10 @@ export default function NearbyLocations() {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setFilterType(tab.id)}
+              onClick={() => {
+                setFilterType(tab.id);
+                setCurrentPage(1);
+              }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 filterType === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -134,16 +148,20 @@ export default function NearbyLocations() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Tìm theo tên phòng khám, đường phố..."
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:border-amber-500"
           />
         </div>
       </div>
 
+
       {/* Danh sách địa điểm */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredLocations.map((loc) => (
+        {paginatedLocations.map((loc) => (
           <div
             key={loc.id}
             className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:shadow-card transition-all flex flex-col justify-between space-y-4"
@@ -218,6 +236,24 @@ export default function NearbyLocations() {
         ))}
       </div>
 
+      {/* Phân trang chuẩn codebase */}
+      {filteredLocations.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-2 shadow-xs">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredLocations.length / limit) || 1}
+            onPageChange={(p) => setCurrentPage(p)}
+            limit={limit}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setCurrentPage(1);
+            }}
+            totalItems={filteredLocations.length}
+          />
+        </div>
+      )}
+
     </div>
   );
 }
+

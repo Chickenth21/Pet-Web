@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import DriveImage from '../components/common/DriveImage';
+import Pagination from '../components/common/Pagination';
 import { Heart, ExternalLink, ShoppingBag, ArrowLeft } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -10,6 +11,16 @@ export default function Favorites() {
   const { token, isAuthenticated } = useAuth();
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Phân trang chuẩn codebase cho trang yêu thích
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(8);
+
+  const paginatedFavorites = React.useMemo(() => {
+    const start = (currentPage - 1) * limit;
+    return favorites.slice(start, start + limit);
+  }, [favorites, currentPage, limit]);
+
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -86,60 +97,78 @@ export default function Favorites() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {favorites.map((prod) => (
-            <div
-              key={prod.id}
-              className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-sm hover:shadow-card transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="relative h-48 rounded-2xl overflow-hidden mb-3 bg-slate-100">
-                  <DriveImage src={prod.images?.[0]} alt={prod.name} className="w-full h-full" />
-                  <button
-                    onClick={() => removeFavorite(prod.id)}
-                    className="absolute top-2.5 right-2.5 p-1.5 bg-white/90 rounded-full text-rose-500 shadow-sm"
-                    title="Bỏ yêu thích"
-                  >
-                    <Heart className="w-4 h-4 fill-rose-500" />
-                  </button>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {paginatedFavorites.map((prod) => (
+              <div
+                key={prod.id}
+                className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-sm hover:shadow-card transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative h-48 rounded-2xl overflow-hidden mb-3 bg-slate-100">
+                    <DriveImage src={prod.images?.[0]} alt={prod.name} className="w-full h-full" />
+                    <button
+                      onClick={() => removeFavorite(prod.id)}
+                      className="absolute top-2.5 right-2.5 p-1.5 bg-white/90 rounded-full text-rose-500 shadow-sm"
+                      title="Bỏ yêu thích"
+                    >
+                      <Heart className="w-4 h-4 fill-rose-500" />
+                    </button>
+                  </div>
+                  <Link to={`/products/${prod.slug}`}>
+                    <h3 className="font-bold text-slate-800 text-sm line-clamp-2 hover:text-amber-600 mb-1.5">
+                      {prod.name}
+                    </h3>
+                  </Link>
+                  <p className="text-xs text-amber-700 bg-amber-50 inline-block px-2 py-0.5 rounded-md font-medium mb-3">
+                    {prod.target_needs || 'Chăm sóc toàn diện'}
+                  </p>
                 </div>
-                <Link to={`/products/${prod.slug}`}>
-                  <h3 className="font-bold text-slate-800 text-sm line-clamp-2 hover:text-amber-600 mb-1.5">
-                    {prod.name}
-                  </h3>
-                </Link>
-                <p className="text-xs text-amber-700 bg-amber-50 inline-block px-2 py-0.5 rounded-md font-medium mb-3">
-                  {prod.target_needs || 'Chăm sóc toàn diện'}
-                </p>
-              </div>
 
-              <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-                <span className="text-base font-extrabold text-amber-600">
-                  {Number(prod.reference_price).toLocaleString('vi-VN')} đ
-                </span>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  {prod.shopee_url && (
-                    <button
-                      onClick={() => trackAffiliate(prod.id, 'shopee', prod.shopee_url)}
-                      className="py-2 bg-[#EE4D2D] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1"
-                    >
-                      Shopee <ExternalLink className="w-3 h-3" />
-                    </button>
-                  )}
-                  {prod.tiktok_url && (
-                    <button
-                      onClick={() => trackAffiliate(prod.id, 'tiktok', prod.tiktok_url)}
-                      className="py-2 bg-black text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1"
-                    >
-                      TikTok <ExternalLink className="w-3 h-3" />
-                    </button>
-                  )}
+                <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                  <span className="text-base font-extrabold text-amber-600">
+                    {Number(prod.reference_price).toLocaleString('vi-VN')} đ
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {prod.shopee_url && (
+                      <button
+                        onClick={() => trackAffiliate(prod.id, 'shopee', prod.shopee_url)}
+                        className="py-2 bg-[#EE4D2D] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1"
+                      >
+                        Shopee <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                    {prod.tiktok_url && (
+                      <button
+                        onClick={() => trackAffiliate(prod.id, 'tiktok', prod.tiktok_url)}
+                        className="py-2 bg-black text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1"
+                      >
+                        TikTok <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Phân trang chuẩn codebase */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-2 shadow-xs">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(favorites.length / limit) || 1}
+              onPageChange={(p) => setCurrentPage(p)}
+              limit={limit}
+              onLimitChange={(l) => {
+                setLimit(l);
+                setCurrentPage(1);
+              }}
+              totalItems={favorites.length}
+            />
+          </div>
         </div>
       )}
+
 
     </div>
   );

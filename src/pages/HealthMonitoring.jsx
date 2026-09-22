@@ -38,7 +38,18 @@ export default function HealthMonitoring() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Phân trang chuẩn codebase cho lịch sử đo chỉ số
+  const [recordPage, setRecordPage] = useState(1);
+  const [recordLimit, setRecordLimit] = useState(5);
+
+  const paginatedRecords = React.useMemo(() => {
+    const records = data?.records || [];
+    const start = (recordPage - 1) * recordLimit;
+    return records.slice(start, start + recordLimit);
+  }, [data?.records, recordPage, recordLimit]);
+
   // Form thêm bản ghi
+
   const [formRecord, setFormRecord] = useState({
     weight: '',
     height: '',
@@ -375,10 +386,22 @@ export default function HealthMonitoring() {
         <h2 className="text-lg font-extrabold text-slate-900">Lịch sử các lần đo chỉ số</h2>
         <DataTable
           columns={tableColumns}
-          data={data?.records || []}
+          data={paginatedRecords}
           isLoading={loading}
           emptyMessage="Chưa có bản ghi theo dõi nào cho thú cưng này"
+          pagination={{
+            currentPage: recordPage,
+            totalPages: Math.ceil((data?.records?.length || 0) / recordLimit) || 1,
+            totalItems: data?.records?.length || 0,
+            limit: recordLimit,
+            onPageChange: (p) => setRecordPage(p),
+            onLimitChange: (l) => {
+              setRecordLimit(l);
+              setRecordPage(1);
+            }
+          }}
         />
+
       </div>
 
       {/* MODAL NHẬP CHỈ SỐ MỚI */}

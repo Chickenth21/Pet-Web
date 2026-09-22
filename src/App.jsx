@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Navbar from './components/layout/Navbar';
-import Footer from './components/layout/Footer';
+import CustomerLayout from './components/layout/CustomerLayout';
+import AdminLayout from './components/layout/AdminLayout';
 
 // Pages
 import Home from './pages/Home';
@@ -21,27 +21,29 @@ import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-      <Navbar />
-      <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:slug" element={<ProductDetail />} />
-          <Route path="/pets" element={<PetProfiles />} />
-          <Route path="/health" element={<HealthMonitoring />} />
-          <Route path="/ai-assistant" element={<AIAssistant />} />
-          <Route path="/matchmaker" element={<PetMatchmaker />} />
-          <Route path="/nearby" element={<NearbyLocations />} />
-          <Route path="/blogs" element={<Blogs />} />
-          <Route path="/blogs/:slug" element={<BlogDetail />} />
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </main>
-      <Footer />
-    </div>
+    <Routes>
+      {/* 1. Tuyến đường phía Khách hàng (Sử dụng CustomerLayout riêng: Navbar + Outlet + Footer) */}
+      <Route element={<CustomerLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/products/:slug" element={<ProductDetail />} />
+        <Route path="/pets" element={<PetProfiles />} />
+        <Route path="/health" element={<HealthMonitoring />} />
+        <Route path="/ai-assistant" element={<AIAssistant />} />
+        <Route path="/matchmaker" element={<PetMatchmaker />} />
+        <Route path="/nearby" element={<NearbyLocations />} />
+        <Route path="/blogs" element={<Blogs />} />
+        <Route path="/blogs/:slug" element={<BlogDetail />} />
+        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Route>
+
+      {/* 2. Tuyến đường Quản trị viên (Sử dụng AdminLayout riêng: Admin Sidebar + Topbar + Phân quyền) */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+      </Route>
+    </Routes>
   );
 }
+
