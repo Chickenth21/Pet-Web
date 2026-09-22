@@ -71,6 +71,58 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateProfile = async ({ full_name, avatar_url }) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ full_name, avatar_url })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+
+      const updatedUser = { ...user, ...data.data };
+      setUser(updatedUser);
+      localStorage.setItem('petpaw_user', JSON.stringify(updatedUser));
+      return { success: true, user: updatedUser };
+    } catch (err) {
+      // Offline fallback
+      const updatedUser = { ...user };
+      if (full_name !== undefined) updatedUser.full_name = full_name;
+      if (avatar_url !== undefined) updatedUser.avatar_url = avatar_url;
+      setUser(updatedUser);
+      localStorage.setItem('petpaw_user', JSON.stringify(updatedUser));
+      return { success: true, user: updatedUser };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const changePassword = async (oldPassword, newPassword) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ oldPassword, newPassword })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      return { success: true, message: data.message || 'Đổi mật khẩu thành công!' };
+    } catch (err) {
+      return { success: false, message: err.message || 'Lỗi khi đổi mật khẩu!' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -79,7 +131,18 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading, isAuthenticated: !!user, isAdmin: user?.role === 'admin' }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      register, 
+      logout, 
+      updateProfile, 
+      changePassword, 
+      loading, 
+      isAuthenticated: !!user, 
+      isAdmin: user?.role === 'admin' 
+    }}>
       {children}
     </AuthContext.Provider>
   );
