@@ -14,7 +14,9 @@ import {
   Lock,
   UserCheck,
   Radio,
-  BookOpen
+  BookOpen,
+  PawPrint,
+  Sparkles
 } from 'lucide-react';
 
 
@@ -76,7 +78,9 @@ export default function AdminLayout() {
 
   const menuItems = [
     { id: 'overview', label: 'Tổng quan hệ thống', path: '/admin', icon: LayoutDashboard },
-    { id: 'products', label: 'Quản lý Sản phẩm', path: '/admin?tab=products', icon: ShoppingBag },
+    { id: 'pet-sales', label: 'Quản lý Thú Cưng Bán', path: '/admin?tab=pet-sales', icon: PawPrint },
+    { id: 'breeds', label: 'Quản lý Giống Chó & Mèo', path: '/admin?tab=breeds', icon: Sparkles },
+    { id: 'products', label: 'Quản lý Phụ kiện & Hạt', path: '/admin?tab=products', icon: ShoppingBag },
     { id: 'blogs', label: 'Quản lý Cẩm nang Blog', path: '/admin?tab=blogs', icon: BookOpen },
     { id: 'discord', label: 'Giám sát & Discord Alert', path: '/admin?tab=discord', icon: AlertTriangle },
   ];

@@ -27,8 +27,10 @@ export default function Footer() {
 
           {/* Cột 2: Tính năng nổi bật */}
           <div className="space-y-3">
-            <h4 className="text-white text-xs font-bold uppercase tracking-wider">Tính năng</h4>
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider">Tính năng & Mua sắm</h4>
             <ul className="space-y-2 text-xs">
+              <li><Link to="/buy-pets" className="hover:text-amber-400 transition-colors">Kho thú cưng thuần chủng</Link></li>
+              <li><Link to="/warranty" className="hover:text-amber-400 transition-colors font-medium text-amber-300/90">Chính sách bảo hành Pet Paw</Link></li>
               <li><Link to="/health" className="hover:text-amber-400 transition-colors">Theo dõi sức khỏe & BCS</Link></li>
               <li><Link to="/ai-assistant" className="hover:text-amber-400 transition-colors">Trợ lý AI tư vấn dinh dưỡng</Link></li>
               <li><Link to="/matchmaker" className="hover:text-amber-400 transition-colors">Gợi ý giống thú cưng phù hợp</Link></li>

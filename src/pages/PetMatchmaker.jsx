@@ -1,28 +1,24 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import RadioGroup from '../components/common/RadioGroup';
 import DriveImage from '../components/common/DriveImage';
 import { 
   Sparkles, 
-  Home, 
-  Clock, 
-  DollarSign, 
-  Users, 
   CheckCircle2, 
   AlertCircle, 
   ArrowRight,
-  PawPrint
+  PawPrint,
+  Tag
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function PetMatchmaker() {
   const [criteria, setCriteria] = useState({
+    species: 'both',
+    budgetTier: '8m_to_15m',
     livingSpace: 'apartment_medium',
-    roomArea: '30_to_60',
-    freeTimeHours: '1_to_2h',
-    hasChildren: 'yes',
-    monthlyBudget: '1m_to_2m',
-    sheddingTolerance: 'medium'
+    personality: 'cuddly_gentle'
   });
 
   const [results, setResults] = useState(null);
@@ -62,58 +58,58 @@ export default function PetMatchmaker() {
           Gợi Ý Giống Thú Cưng Phù Hợp Nhất Với Bạn
         </h1>
         <p className="text-sm text-slate-500">
-          Dựa trên diện tích phòng, thời gian biểu hàng ngày và ngân sách để tìm ra người bạn bốn chân hoàn hảo nhất.
+          Dựa trên ngân sách dự kiến, loài yêu thích, diện tích không gian sống và tính cách mong muốn để tìm ra người bạn bốn chân hoàn hảo nhất.
         </p>
       </div>
 
-      {/* Form khảo sát */}
+      {/* Form khảo sát 4 câu hỏi thiết thực */}
       <form onSubmit={handleQuizSubmit} className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-8">
         
-        {/* Câu 1: Không gian sống */}
+        {/* Câu 1: Giống loài */}
         <RadioGroup
-          label="1. Không gian sống hiện tại của bạn là gì?"
+          label="1. Bạn dự định đón người bạn thuộc giống loài nào?"
+          value={criteria.species}
+          onChange={(val) => setCriteria({ ...criteria, species: val })}
+          options={[
+            { value: 'dog', label: 'Chó cảnh (Trung thành & Năng động)', description: 'Thích quấn quýt, vui tươi, thích cùng bạn đi dạo và tham gia các hoạt động ngoài trời' },
+            { value: 'cat', label: 'Mèo cảnh (Độc lập & Êm dịu)', description: 'Êm ái, thích sạch sẽ, ít gây tiếng ồn và không cần dắt đi dạo hàng ngày' },
+            { value: 'both', label: 'Cả hai / Linh hoạt', description: 'Sẵn sàng đón cả chó hoặc mèo tùy vào mức độ hòa hợp với không gian và lối sống của bạn' }
+          ]}
+        />
+
+        {/* Câu 2: Mệnh giá */}
+        <RadioGroup
+          label="2. Mức ngân sách (mệnh giá) bạn dự kiến chi trả để đón bé?"
+          value={criteria.budgetTier}
+          onChange={(val) => setCriteria({ ...criteria, budgetTier: val })}
+          options={[
+            { value: 'under_8m', label: 'Dưới 8.000.000 đ (Tiết kiệm)', description: 'Các bé Poodle Tiny, Mèo Ba Tư, cún mèo lai hoặc dòng thú cưng phổ thông khỏe mạnh' },
+            { value: '8m_to_15m', label: '8.000.000 đ - 15.000.000 đ (Phổ biến)', description: 'Mèo Anh lông ngắn, Corgi, Golden Retriever, Munchkin, Phốc Sóc thuần chủng' },
+            { value: 'above_15m', label: 'Trên 15.000.000 đ (Cao cấp)', description: 'Mèo Ragdoll Bicolor, thú cưng thuần chủng có phả hệ VKA / WCF / TICA hoặc nhập ngoại' }
+          ]}
+        />
+
+        {/* Câu 3: Không gian sống */}
+        <RadioGroup
+          label="3. Không gian sống hiện tại của bạn như thế nào?"
           value={criteria.livingSpace}
           onChange={(val) => setCriteria({ ...criteria, livingSpace: val })}
           options={[
-            { value: 'apartment_small', label: 'Căn hộ / Chung cư nhỏ', description: 'Không gian ấm cúng, hạn chế tiếng ồn' },
-            { value: 'apartment_medium', label: 'Chung cư vừa (có ban công)', description: 'Thoáng mát, có khu vực phơi nắng' },
-            { value: 'house_garden', label: 'Nhà phố / Nhà có sân vườn', description: 'Không gian rộng rãi, thoải mái chạy nhảy' }
+            { value: 'apartment_small', label: 'Căn hộ / Chung cư nhỏ (< 45m²)', description: 'Cần giống thú cưng nhỏ gọn, điềm tĩnh, ít gây tiếng ồn ảnh hưởng hàng xóm' },
+            { value: 'apartment_medium', label: 'Chung cư vừa / Nhà phố (45 - 80m²)', description: 'Không gian tiêu chuẩn, thoáng mát, phù hợp với đa số các giống chó mèo tầm trung' },
+            { value: 'house_garden', label: 'Nhà riêng có sân vườn (> 80m²)', description: 'Rộng rãi, lý tưởng cho các bé năng động, thích chạy nhảy và vận động tự do' }
           ]}
         />
 
-        {/* Câu 2: Diện tích phòng */}
+        {/* Câu 4: Tính cách */}
         <RadioGroup
-          label="2. Diện tích khu vực dành cho thú cưng sinh hoạt?"
-          value={criteria.roomArea}
-          onChange={(val) => setCriteria({ ...criteria, roomArea: val })}
+          label="4. Bạn mong muốn một người bạn bốn chân có tính cách như thế nào?"
+          value={criteria.personality}
+          onChange={(val) => setCriteria({ ...criteria, personality: val })}
           options={[
-            { value: 'under_30', label: 'Dưới 30m²', description: 'Phù hợp thú cưng nhỏ, ít chạy nhảy' },
-            { value: '30_to_60', label: 'Từ 30m² - 60m²', description: 'Phù hợp đa số giống chó mèo vừa' },
-            { value: 'above_60', label: 'Trên 60m²', description: 'Rộng rãi cho mọi giống thú cưng' }
-          ]}
-        />
-
-        {/* Câu 3: Thời gian rảnh rỗi mỗi ngày */}
-        <RadioGroup
-          label="3. Thời gian bạn có thể dành để chơi đùa và chăm sóc mỗi ngày?"
-          value={criteria.freeTimeHours}
-          onChange={(val) => setCriteria({ ...criteria, freeTimeHours: val })}
-          options={[
-            { value: 'under_1h', label: 'Dưới 1 tiếng (Bận rộn)', description: 'Ưu tiên thú cưng độc lập, ít quấn chủ' },
-            { value: '1_to_2h', label: '1 - 2 tiếng (Tiêu chuẩn)', description: 'Đủ thời gian vuốt ve và chải lông' },
-            { value: 'above_2h', label: 'Trên 2 tiếng (Rất thoải mái)', description: 'Có thể dắt đi dạo hàng ngày và huấn luyện' }
-          ]}
-        />
-
-        {/* Câu 4: Ngân sách chăm sóc hàng tháng */}
-        <RadioGroup
-          label="4. Ngân sách dự kiến cho hạt, pate, cát vệ sinh và tiêm phòng?"
-          value={criteria.monthlyBudget}
-          onChange={(val) => setCriteria({ ...criteria, monthlyBudget: val })}
-          options={[
-            { value: 'under_500k', label: 'Dưới 500.000 đ', description: 'Mức cơ bản, tiết kiệm' },
-            { value: '1m_to_2m', label: '1.000.000 - 2.000.000 đ', description: 'Đầy đủ dinh dưỡng cao cấp và đồ chơi' },
-            { value: 'above_2m', label: 'Trên 2.000.000 đ', description: 'Chăm sóc spa và thức ăn ngoại nhập tốt nhất' }
+            { value: 'calm_independent', label: 'Điềm tĩnh & Tự lập', description: 'Ngoan ngoãn khi ở nhà một mình lúc bạn đi làm, không quậy phá đồ đạc, ít sủa kêu' },
+            { value: 'cuddly_gentle', label: 'Quấn quýt & Hiền lành', description: 'Rất tình cảm, thích được ôm ấp vuốt ve, ngủ cạnh chủ, thân thiện tuyệt đối với trẻ em' },
+            { value: 'active_playful', label: 'Năng động & Thông minh', description: 'Tràn đầy năng lượng, thích học trò chơi, phản xạ nhạy bén, sẵn sàng đồng hành chạy bộ' }
           ]}
         />
 
@@ -174,9 +170,22 @@ export default function PetMatchmaker() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Chi phí ước tính:</span>
-                  <span className="font-bold text-amber-700">{item.monthlyCost}</span>
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5 text-slate-400" />
+                      Mệnh giá tham khảo:
+                    </span>
+                    <span className="font-bold text-amber-700">{item.priceRange}</span>
+                  </div>
+
+                  <Link
+                    to={item.marketLink || '/buy-pets'}
+                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm shadow-amber-500/20 transition-all cursor-pointer"
+                  >
+                    <span>Xem các bé đang mở bán tại Pet Paw</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
             ))}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePet } from '../context/PetContext';
 import Modal from '../components/common/Modal';
 import Select from '../components/common/Select';
+import SearchSelect from '../components/common/SearchSelect';
 import DriveImage from '../components/common/DriveImage';
 import { 
   Plus, 
@@ -198,13 +199,12 @@ export default function PetProfiles() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-slate-700 block mb-1">Giống loài *</label>
-              <input
-                type="text"
-                required
+              <SearchSelect
+                species={formData.species}
                 value={formData.breed}
-                onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                placeholder="VD: Mèo Anh lông ngắn, Corgi, Poodle..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                onChange={(val) => setFormData({ ...formData, breed: val })}
+                placeholder="Tìm hoặc chọn giống loài..."
+                required
               />
             </div>
 

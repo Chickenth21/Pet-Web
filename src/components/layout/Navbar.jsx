@@ -36,9 +36,10 @@ export default function Navbar() {
 
   const navItems = [
     { label: 'Trang chủ', path: '/', icon: Home },
-    { label: 'Cửa hàng', path: '/products', icon: ShoppingBag },
+    { label: 'Mua Thú Cưng', path: '/buy-pets', icon: PawPrint, badge: 'Hot' },
+    { label: 'Bảo hành', path: '/warranty', icon: ShieldCheck },
+    { label: 'Phụ kiện & Hạt', path: '/products', icon: ShoppingBag },
     { label: 'Theo dõi thể trạng', path: '/health', icon: Activity },
-    { label: 'AI Trợ lý', path: '/ai-assistant', icon: Bot, badge: 'Hot' },
     { label: 'Gợi ý chọn thú', path: '/matchmaker', icon: Sparkles },
     { label: 'Gần bạn', path: '/nearby', icon: MapPin },
     { label: 'Cẩm nang Blog', path: '/blogs', icon: BookOpen }

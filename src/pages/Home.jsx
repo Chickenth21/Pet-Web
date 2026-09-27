@@ -12,13 +12,15 @@ import {
   MapPin, 
   ExternalLink,
   ChevronRight,
-  Award
+  Award,
+  PawPrint
 } from 'lucide-react';
 import DriveImage from '../components/common/DriveImage';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function Home() {
+  const [featuredPets, setFeaturedPets] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [recentBlogs, setRecentBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,14 +28,17 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prodRes, blogRes] = await Promise.all([
+        const [prodRes, blogRes, petRes] = await Promise.all([
           fetch(`${API_BASE}/products?limit=4`),
-          fetch(`${API_BASE}/blogs?limit=3`)
+          fetch(`${API_BASE}/blogs?limit=3`),
+          fetch(`${API_BASE}/pet-sales?limit=4&status=available`)
         ]);
         const prods = await prodRes.json();
         const blogs = await blogRes.json();
+        const pets = await petRes.json();
         if (prods.success) setFeaturedProducts(prods.data.products);
         if (blogs.success) setRecentBlogs(blogs.data.posts);
+        if (pets.success) setFeaturedPets(pets.data.pets);
       } catch {
         // Mock data handled gracefully
       } finally {
@@ -152,7 +157,106 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. CÁC TÍNH NĂNG CHỦ ĐẠO (Features Grid) */}
+      {/* 2. CÁC BÉ THÚ CƯNG ĐANG TÌM CHỦ (CORE BUSINESS) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase mb-2">
+              <PawPrint className="w-3.5 h-3.5 text-amber-600" />
+              <span>Các Bé Mở Bán Mới Nhất</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+              Bé Cưng Thuần Chủng Đang Tìm Chủ
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Đầy đủ sổ tiêm 2 mũi, cam kết bảo hành sức khỏe và hỗ trợ bác sĩ thú y trọn đời
+            </p>
+          </div>
+
+          <Link
+            to="/buy-pets"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-amber-600 hover:text-amber-700 group cursor-pointer"
+          >
+            <span>Xem tất cả các bé</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featuredPets.map((pet) => (
+            <Link
+              key={pet.id}
+              to={`/buy-pets/${pet.id}`}
+              className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-amber-300 hover:-translate-y-1 transition-all duration-300 flex flex-col group cursor-pointer block"
+            >
+              {/* Khung Ảnh đại diện cố định kích thước h-56, không bị co giãn/flex */}
+              <div className="relative w-full h-56 shrink-0 bg-slate-100 overflow-hidden">
+                <DriveImage
+                  src={Array.isArray(pet.images) ? pet.images[0] : pet.image_url}
+                  alt={pet.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-2.5 left-2.5">
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[10px] font-bold shadow-xs">
+                    🟢 Đang tìm chủ
+                  </span>
+                </div>
+                <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
+                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase text-white shadow-xs ${
+                    pet.gender === 'female' ? 'bg-pink-500/90' : 'bg-blue-600/90'
+                  }`}>
+                    {pet.gender === 'female' ? '♀ Bé Cái' : '♂ Bé Đực'}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold">
+                    {pet.age_months}th
+                  </span>
+                </div>
+                {pet.pedigree && pet.pedigree !== 'Không giấy' && (
+                  <div className="absolute bottom-2.5 left-2.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-black text-[9px] shadow-md shadow-black/20">
+                      <Award className="w-3 h-3" />
+                      <span>Giấy {pet.pedigree}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                      pet.species === 'cat' 
+                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' 
+                        : 'bg-amber-50 text-amber-800 border border-amber-200'
+                    }`}>
+                      {pet.species === 'cat' ? 'Mèo' : 'Chó'}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500 truncate">{pet.breed}</span>
+                  </div>
+                  <h3 className="font-extrabold text-slate-900 text-sm line-clamp-1 group-hover:text-amber-600 transition-colors">
+                    {pet.name}
+                  </h3>
+                </div>
+
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[9px] font-bold uppercase text-slate-400 block leading-tight">Giá đón bé</span>
+                    <span className="text-base font-black text-amber-600 leading-tight">
+                      {Number(pet.price).toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 group-hover:text-amber-700 transition-colors">
+                    <span>Chi tiết</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. CÁC TÍNH NĂNG CHỦ ĐẠO (Features Grid) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
