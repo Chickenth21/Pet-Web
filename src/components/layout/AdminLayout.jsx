@@ -145,11 +145,11 @@ export default function AdminLayout() {
   const menuItems = [
     { id: 'overview', label: 'Tổng quan hệ thống', path: '/admin', icon: LayoutDashboard },
     { id: 'users', label: 'Phân quyền & Tài khoản', path: '/admin?tab=users', icon: Users },
-    { id: 'locations', label: 'Bệnh viện & Tiệm Spa', path: '/admin?tab=locations', icon: Stethoscope },
     { id: 'breeds', label: 'Quản lý Giống Chó & Mèo', path: '/admin?tab=breeds', icon: Sparkles },
     { id: 'pet-sales', label: 'Quản lý Thú Cưng Bán', path: '/admin?tab=pet-sales', icon: PawPrint },
     { id: 'products', label: 'Quản lý Phụ kiện & Hạt', path: '/admin?tab=products', icon: ShoppingBag },
     { id: 'blogs', label: 'Quản lý Cẩm nang Blog', path: '/admin?tab=blogs', icon: BookOpen },
+    { id: 'locations', label: 'Bệnh viện & Tiệm Spa', path: '/admin?tab=locations', icon: Stethoscope },
     { id: 'discord', label: 'Giám sát & Discord Alert', path: '/admin?tab=discord', icon: AlertTriangle },
   ];
 
