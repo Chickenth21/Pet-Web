@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/common/DataTable';
 import Modal from '../components/common/Modal';
 import DriveImage from '../components/common/DriveImage';
+import ImageUploader from '../components/common/ImageUploader';
 import { 
   ShieldCheck, 
   Users, 
@@ -2009,144 +2010,59 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Multi-Image URL Manager */}
-            <div className="sm:col-span-2 space-y-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-amber-500" />
-                    <span>Bộ sưu tập hình ảnh của bé ({petForm.images.filter(u => u && u.trim()).length} ảnh)</span>
-                  </label>
-                  <p className="text-[11px] text-slate-500">
-                    Ảnh đầu tiên sẽ là ảnh đại diện (Cover). Hỗ trợ link ảnh trực tiếp (JPG, PNG, WebP) hoặc mã/link Google Drive.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBulkPasteOpen(!bulkPasteOpen)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>{bulkPasteOpen ? 'Đóng dán hàng loạt' : 'Dán nhiều link'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddImageRow}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Thêm dòng</span>
-                  </button>
-                </div>
-              </div>
+            {/* Tải ảnh lên trực tiếp (Multer -> Sharp WebP -> Cloudflare R2) */}
+            <div className="sm:col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3">
+              <ImageUploader
+                images={petForm.images}
+                onChange={(newImages) => setPetForm({ ...petForm, images: newImages })}
+                multiple={true}
+                maxFiles={10}
+                folder="pets"
+                label="Bộ sưu tập ảnh bé cưng (Tự động nén WebP ~90% & Lưu Cloudflare R2)"
+              />
 
-              {/* Dán hàng loạt nhanh */}
-              {bulkPasteOpen && (
-                <div className="p-3 bg-white rounded-xl border border-amber-200/80 shadow-xs space-y-2 animate-fade-in">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-900 text-[11px] flex items-center gap-1">
-                      <FileText className="w-3.5 h-3.5" /> Dán danh sách link ảnh (mỗi dòng 1 link hoặc phân cách bởi dấu phẩy):
+              {/* Tùy chọn dự phòng: Nhập link ảnh thủ công nếu có */}
+              <div className="pt-2 border-t border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setBulkPasteOpen(!bulkPasteOpen)}
+                  className="text-[11px] font-semibold text-slate-500 hover:text-amber-600 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{bulkPasteOpen ? '▲ Đóng công cụ dán link thủ công' : '▼ Bạn có sẵn link ảnh ngoài? Nhấn để dán thủ công'}</span>
+                </button>
+
+                {bulkPasteOpen && (
+                  <div className="mt-2 p-3 bg-white rounded-xl border border-amber-200/80 shadow-xs space-y-2 animate-fade-in">
+                    <span className="font-bold text-amber-900 text-[11px] block">
+                      Dán danh sách link ảnh (mỗi dòng 1 link hoặc phân cách bởi dấu phẩy):
                     </span>
-                  </div>
-                  <textarea
-                    rows={3}
-                    value={bulkPasteText}
-                    onChange={(e) => setBulkPasteText(e.target.value)}
-                    placeholder="https://images.unsplash.com/photo-1...&#10;https://images.unsplash.com/photo-2..."
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBulkPasteOpen(false)}
-                      className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded-lg cursor-pointer"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleApplyBulkPaste}
-                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
-                    >
-                      Áp dụng link ảnh
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Danh sách link ảnh từng dòng */}
-              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                {petForm.images.map((url, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-200 border border-slate-300 shrink-0 flex items-center justify-center">
-                      {url ? (
-                        <DriveImage src={url} alt={`Pet ${idx + 1}`} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[10px] text-slate-400 font-bold">#{idx + 1}</span>
-                      )}
-                    </div>
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={url}
-                        onChange={(e) => handleUpdateImage(idx, e.target.value)}
-                        placeholder={idx === 0 ? "Link ảnh đại diện chính (Cover)..." : `Link ảnh chi tiết #${idx + 1}...`}
-                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs focus:outline-none focus:border-amber-500 ${
-                          idx === 0 ? 'border-amber-300 font-medium' : 'border-slate-200'
-                        }`}
-                      />
-                      {idx === 0 && (
-                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500 text-slate-950 uppercase tracking-wider pointer-events-none">
-                          Ảnh bìa
-                        </span>
-                      )}
-                    </div>
-
-                    {idx !== 0 && (
+                    <textarea
+                      rows={3}
+                      value={bulkPasteText}
+                      onChange={(e) => setBulkPasteText(e.target.value)}
+                      placeholder="https://images.unsplash.com/photo-1...&#10;https://images.unsplash.com/photo-2..."
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                    <div className="flex justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => handleSetCoverImage(idx)}
-                        title="Đặt làm ảnh bìa"
-                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+                        onClick={() => setBulkPasteOpen(false)}
+                        className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded-lg cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5" />
+                        Hủy
                       </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      disabled={petForm.images.length === 1 && !url}
-                      title="Xóa link ảnh này"
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyBulkPaste}
+                        className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        Áp dụng link ảnh
+                      </button>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
-
-              {/* Live preview gallery */}
-              {petForm.images.some(u => u && u.trim()) && (
-                <div className="pt-2 border-t border-slate-200/80">
-                  <span className="text-[11px] font-bold text-slate-600 block mb-1.5">
-                    Gallery hiển thị trên trang chi tiết ({petForm.images.filter(u => u && u.trim()).length} ảnh):
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {petForm.images.filter(u => u && u.trim()).map((u, i) => (
-                      <div key={i} className="relative w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100 group shadow-2xs">
-                        <DriveImage src={u} alt={`Preview ${i}`} className="w-full h-full object-cover" />
-                        {i === 0 && (
-                          <div className="absolute top-0 inset-x-0 bg-amber-500/90 text-slate-950 text-[9px] font-extrabold text-center py-0.5">
-                            BÌA
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="sm:col-span-2">
@@ -2263,22 +2179,13 @@ export default function AdminDashboard() {
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Ảnh minh họa giống</label>
-            <input
-              type="text"
-              value={breedForm.image_url}
-              onChange={(e) => setBreedForm({ ...breedForm, image_url: e.target.value })}
-              placeholder="https://... hoặc Google Drive link"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
+            <ImageUploader
+              images={breedForm.image_url}
+              onChange={(url) => setBreedForm({ ...breedForm, image_url: url })}
+              multiple={false}
+              folder="breeds"
+              label="Ảnh đại diện giống (Tự động nén WebP ~90% & Lưu Cloudflare R2)"
             />
-            {breedForm.image_url && (
-              <div className="mt-2 flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-200 shrink-0">
-                  <DriveImage src={breedForm.image_url} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[11px] text-slate-500">Xem trước ảnh đại diện giống</span>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-2 pt-2">
@@ -2409,13 +2316,12 @@ export default function AdminDashboard() {
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Ảnh sản phẩm (URL trực tiếp hoặc Google Drive ID)</label>
-            <input
-              type="text"
-              value={productForm.image_url}
-              onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })}
-              placeholder="https://... hoặc ID Google Drive"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
+            <ImageUploader
+              images={productForm.image_url}
+              onChange={(url) => setProductForm({ ...productForm, image_url: url })}
+              multiple={false}
+              folder="products"
+              label="Ảnh sản phẩm (Tự động nén WebP ~90% & Lưu Cloudflare R2)"
             />
           </div>
 
