@@ -256,13 +256,18 @@ export default function ImageUploader({
       )}
 
       {/* Trường hợp Single Image (1 ảnh đại diện) */}
-      {!multiple && images && (
-        <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 group">
-          <DriveImage src={images} alt="Avatar" className="w-full h-full object-cover" />
+      {!multiple && Boolean(Array.isArray(images) ? images[0] : images) && (
+        <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 group shadow-sm">
+          <DriveImage 
+            src={Array.isArray(images) ? images[0] : images} 
+            alt="Preview" 
+            className="w-full h-full object-cover" 
+          />
           <button
             type="button"
             onClick={() => handleRemove(0)}
-            className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            className="absolute top-1 right-1 p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
+            title="Xóa ảnh"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

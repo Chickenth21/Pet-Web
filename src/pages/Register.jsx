@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PawPrint, Lock, Mail, User, AlertCircle } from 'lucide-react';
+import GoogleAuthButton from '../components/common/GoogleAuthButton';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -51,6 +52,19 @@ export default function Register() {
             <span>{error}</span>
           </div>
         )}
+
+        {/* Nút Đăng ký Nhanh với Google */}
+        <div className="space-y-4">
+          <GoogleAuthButton mode="register" onError={setError} />
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200"></div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Hoặc điền thông tin
+            </span>
+            <div className="flex-1 h-px bg-slate-200"></div>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-sm">
           <div>

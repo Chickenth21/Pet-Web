@@ -16,6 +16,10 @@ export default function DriveImage({
   // Phân tích và chuẩn hóa Google Drive link sang link hiển thị trực tiếp
   const resolveImageUrl = (input) => {
     if (!input) return null;
+    if (Array.isArray(input)) {
+      input = input[0];
+    }
+    if (!input || typeof input !== 'string') return null;
 
     // Kiểm tra nếu là Google Drive ID hoặc Link
     const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/;

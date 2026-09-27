@@ -149,7 +149,6 @@ export default function AdminDashboard() {
     origin: '',
     size_category: 'medium',
     temperament: '',
-    image_url: '',
     is_active: true
   });
 
@@ -219,8 +218,16 @@ export default function AdminDashboard() {
       if (petData.success) setPetsForSale(petData.data.pets);
       if (prods.success) setProducts(prods.data.products);
       if (cats.success) setCategories(cats.data);
-      if (blgs.success) setBlogs(blgs.data);
-      if (breedData.success) setBreeds(breedData.data.breeds);
+      if (blgs.success) setBlogs(blgs.data || []);
+      if (breedData.success) {
+        setBreeds(breedData.data.breeds || []);
+      } else {
+        try {
+          const pubRes = await fetch(`${API_BASE}/breeds?limit=100`);
+          const pubData = await pubRes.json();
+          if (pubData.success) setBreeds(pubData.data.breeds || []);
+        } catch {}
+      }
     } catch {
       // Fallback
     } finally {
@@ -370,6 +377,12 @@ export default function AdminDashboard() {
         validImages.push(petForm.image_url.trim());
       }
 
+      const parsePrice = (v) => {
+        if (!v) return 0;
+        const cleaned = String(v).replace(/[^0-9]/g, '');
+        return parseInt(cleaned, 10) || 0;
+      };
+
       const payload = {
         name: petForm.name.trim(),
         species: petForm.species,
@@ -377,8 +390,8 @@ export default function AdminDashboard() {
         gender: petForm.gender,
         age_months: parseInt(petForm.age_months, 10) || 2,
         color: petForm.color.trim(),
-        price: parseFloat(petForm.price) || 0,
-        deposit_amount: parseFloat(petForm.deposit_amount) || 0,
+        price: parsePrice(petForm.price),
+        deposit_amount: parsePrice(petForm.deposit_amount),
         vaccination_status: petForm.vaccination_status.trim(),
         pedigree: petForm.pedigree,
         health_warranty: petForm.health_warranty.trim(),
@@ -411,6 +424,13 @@ export default function AdminDashboard() {
             : '🎉 Đã đăng bán bé thú cưng mới! Khách hàng sẽ thấy ngay tại trang Mua Thú Cưng.'
         );
         setPetModalOpen(false);
+        if (data.data) {
+          if (editingPet) {
+            setPetsForSale(prev => prev.map(p => p.id === data.data.id ? data.data : p));
+          } else {
+            setPetsForSale(prev => [data.data, ...prev.filter(p => p.id !== data.data.id)]);
+          }
+        }
         fetchAllData();
       } else {
         showNotification(data.message || 'Lỗi khi lưu thông tin bé cưng', 'error');
@@ -430,7 +450,6 @@ export default function AdminDashboard() {
         origin: breed.origin || '',
         size_category: breed.size_category || 'medium',
         temperament: breed.temperament || '',
-        image_url: breed.image_url || '',
         is_active: breed.is_active !== false
       });
     } else {
@@ -441,7 +460,6 @@ export default function AdminDashboard() {
         origin: '',
         size_category: 'medium',
         temperament: '',
-        image_url: '',
         is_active: true
       });
     }
@@ -462,7 +480,6 @@ export default function AdminDashboard() {
         origin: breedForm.origin.trim(),
         size_category: breedForm.size_category,
         temperament: breedForm.temperament.trim(),
-        image_url: breedForm.image_url.trim(),
         is_active: breedForm.is_active
       };
 
@@ -488,6 +505,13 @@ export default function AdminDashboard() {
             : '🎉 Đã thêm giống thú cưng mới vào từ điển hệ thống!'
         );
         setBreedModalOpen(false);
+        if (data.data) {
+          if (editingBreed) {
+            setBreeds(prev => prev.map(b => b.id === data.data.id ? data.data : b));
+          } else {
+            setBreeds(prev => [data.data, ...prev.filter(b => b.id !== data.data.id)]);
+          }
+        }
         fetchAllData();
       } else {
         showNotification(data.message || 'Lỗi khi lưu giống thú cưng', 'error');
@@ -508,6 +532,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         showNotification(data.message || 'Đã cập nhật trạng thái hiển thị');
+        setBreeds(prev => prev.map(b => b.id === id ? { ...b, is_active: !currentStatus } : b));
         fetchAllData();
       } else {
         showNotification(data.message || 'Lỗi cập nhật trạng thái', 'error');
@@ -527,6 +552,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         showNotification(`Đã xóa giống "${name}" thành công!`);
+        setBreeds(prev => prev.filter(b => b.id !== id));
         fetchAllData();
       } else {
         showNotification(data.message || 'Lỗi khi xóa giống', 'error');
@@ -604,7 +630,7 @@ export default function AdminDashboard() {
         reference_price: '',
         shopee_url: '',
         tiktok_url: '',
-        image_url: 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=600&auto=format&fit=crop',
+        image_url: '',
         target_age: 'Mọi lứa tuổi',
         target_needs: '',
         description: '',
@@ -620,9 +646,15 @@ export default function AdminDashboard() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     try {
+      const parsePrice = (v) => {
+        if (!v) return 0;
+        const cleaned = String(v).replace(/[^0-9]/g, '');
+        return parseInt(cleaned, 10) || 0;
+      };
+
       const payload = {
         ...productForm,
-        reference_price: Number(productForm.reference_price) || 0,
+        reference_price: parsePrice(productForm.reference_price),
         images: productForm.image_url ? [productForm.image_url] : []
       };
 
@@ -648,6 +680,13 @@ export default function AdminDashboard() {
             : '✅ Đã thêm sản phẩm mới vào hệ thống! Sản phẩm đã xuất hiện trên trang Cửa hàng của khách.'
         );
         setProductModalOpen(false);
+        if (data.data) {
+          if (editingProduct) {
+            setProducts(prev => prev.map(p => p.id === data.data.id ? data.data : p));
+          } else {
+            setProducts(prev => [data.data, ...prev.filter(p => p.id !== data.data.id)]);
+          }
+        }
         fetchAllData();
       } else {
         showNotification(data.message || 'Lỗi khi lưu sản phẩm', 'error');
@@ -670,6 +709,7 @@ export default function AdminDashboard() {
             ? '👁️‍🗨️ Đã ẩn sản phẩm khỏi trang khách hàng.' 
             : '🌟 Đã hiển thị lại sản phẩm trên trang khách hàng.'
         );
+        setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: !currentStatus } : p));
         fetchAllData();
       }
     } catch {
@@ -687,6 +727,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         showNotification('🗑️ Đã xóa sản phẩm khỏi hệ thống!');
+        setProducts(prev => prev.filter(p => p.id !== id));
         fetchAllData();
       }
     } catch {
@@ -715,9 +756,9 @@ export default function AdminDashboard() {
         title: '',
         category: 'Kiến thức nuôi',
         target_pet_type: 'all',
-        thumbnail_url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&auto=format&fit=crop',
+        thumbnail_url: '',
         youtube_url: '',
-        tags: 'chăm sóc, dinh dưỡng, sức khỏe',
+        tags: '',
         summary: '',
         content: '',
         is_published: true
@@ -756,6 +797,13 @@ export default function AdminDashboard() {
             : '✅ Đã đăng bài viết mới thành công! Khách hàng có thể đọc và xem video YouTube ngay lập tức.'
         );
         setBlogModalOpen(false);
+        if (data.data) {
+          if (editingBlog) {
+            setBlogs(prev => prev.map(b => b.id === data.data.id ? data.data : b));
+          } else {
+            setBlogs(prev => [data.data, ...prev.filter(b => b.id !== data.data.id)]);
+          }
+        }
         fetchAllData();
       } else {
         showNotification(data.message || 'Lỗi khi lưu bài viết', 'error');
@@ -778,6 +826,7 @@ export default function AdminDashboard() {
             ? '📝 Đã chuyển bài viết về dạng Bản nháp (khách hàng không thấy nữa).' 
             : '🚀 Đã xuất bản bài viết lên trang Cẩm nang của khách hàng!'
         );
+        setBlogs(prev => prev.map(b => b.id === id ? { ...b, is_published: !currentPublished } : b));
         fetchAllData();
       }
     } catch {
@@ -795,6 +844,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         showNotification('🗑️ Đã xóa bài viết thành công!');
+        setBlogs(prev => prev.filter(b => b.id !== id));
         fetchAllData();
       }
     } catch {
@@ -1203,16 +1253,6 @@ export default function AdminDashboard() {
   // Cấu hình cột Giống Thú Cưng cho DataTable
   const breedColumns = [
     {
-      key: 'image_url',
-      title: 'Ảnh đại diện',
-      width: '70px',
-      render: (val, row) => (
-        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
-          <DriveImage src={val} alt={row.name} className="w-full h-full object-cover" />
-        </div>
-      )
-    },
-    {
       key: 'name',
       title: 'Tên giống & Phân loài',
       render: (val, row) => (
@@ -1293,8 +1333,8 @@ export default function AdminDashboard() {
   ];
 
   const clickData = [
-    { name: 'Shopee', clicks: stats?.summary?.shopeeClicks || 3, fill: '#EE4D2D' },
-    { name: 'TikTok Shop', clicks: stats?.summary?.tiktokClicks || 2, fill: '#1e293b' }
+    { name: 'Shopee', clicks: stats?.summary?.shopeeClicks ?? 0, fill: '#EE4D2D' },
+    { name: 'TikTok Shop', clicks: stats?.summary?.tiktokClicks ?? 0, fill: '#1e293b' }
   ];
 
   return (
@@ -1363,7 +1403,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <span className="text-xs text-slate-400 font-medium">Người dùng đăng ký</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats?.summary?.totalUsers || 148}</h3>
+                <h3 className="text-2xl font-black text-slate-900">{stats?.summary?.totalUsers ?? 0}</h3>
               </div>
             </div>
 
@@ -1373,7 +1413,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <span className="text-xs text-slate-400 font-medium">Hồ sơ cá nhân nuôi</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats?.summary?.totalPets || 215}</h3>
+                <h3 className="text-2xl font-black text-slate-900">{stats?.summary?.totalPets ?? 0}</h3>
               </div>
             </div>
 
@@ -1393,7 +1433,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <span className="text-xs text-slate-400 font-medium">Lượt click Affiliate</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats?.summary?.totalAffiliateClicks || 5}</h3>
+                <h3 className="text-2xl font-black text-slate-900">{stats?.summary?.totalAffiliateClicks ?? 0}</h3>
               </div>
             </div>
           </div>
@@ -1929,11 +1969,12 @@ export default function AdminDashboard() {
                 Giá bán chính thức (VNĐ) <span className="text-rose-500">*</span>
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 required
                 value={petForm.price}
                 onChange={(e) => setPetForm({ ...petForm, price: e.target.value })}
-                placeholder="VD: 12500000"
+                placeholder="VD: 12500000 hoặc 12.500.000"
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
               />
             </div>
@@ -1941,10 +1982,11 @@ export default function AdminDashboard() {
             <div>
               <label className="font-bold text-slate-700 block mb-1">Số tiền đặt cọc giữ chỗ (VNĐ)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={petForm.deposit_amount}
                 onChange={(e) => setPetForm({ ...petForm, deposit_amount: e.target.value })}
-                placeholder="VD: 2000000 (để trống nếu không yêu cầu cọc)"
+                placeholder="VD: 2000000 hoặc 2.000.000"
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
               />
             </div>
@@ -2178,15 +2220,6 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div>
-            <ImageUploader
-              images={breedForm.image_url}
-              onChange={(url) => setBreedForm({ ...breedForm, image_url: url })}
-              multiple={false}
-              folder="breeds"
-              label="Ảnh đại diện giống (Tự động nén WebP ~90% & Lưu Cloudflare R2)"
-            />
-          </div>
 
           <div className="flex items-center gap-2 pt-2">
             <input
@@ -2282,10 +2315,11 @@ export default function AdminDashboard() {
             <div>
               <label className="font-bold text-slate-700 block mb-1">Giá tham khảo (VNĐ)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={productForm.reference_price}
                 onChange={(e) => setProductForm({ ...productForm, reference_price: e.target.value })}
-                placeholder="VD: 350000"
+                placeholder="VD: 255000 hoặc 255.000"
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
               />
             </div>
@@ -2413,28 +2447,25 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Link Ảnh Thumbnail</label>
-              <input
-                type="url"
-                value={blogForm.thumbnail_url}
-                onChange={(e) => setBlogForm({ ...blogForm, thumbnail_url: e.target.value })}
-                placeholder="https://..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
-              />
-            </div>
+          <div>
+            <ImageUploader
+              images={blogForm.thumbnail_url}
+              onChange={(url) => setBlogForm({ ...blogForm, thumbnail_url: url })}
+              multiple={false}
+              folder="blogs"
+              label="Ảnh bìa bài viết (Tự động nén WebP ~90% & Lưu Cloudflare R2)"
+            />
+          </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Link Video YouTube (Tùy chọn)</label>
-              <input
-                type="url"
-                value={blogForm.youtube_url}
-                onChange={(e) => setBlogForm({ ...blogForm, youtube_url: e.target.value })}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
-              />
-            </div>
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Link Video YouTube hướng dẫn thực tế (Tùy chọn)</label>
+            <input
+              type="url"
+              value={blogForm.youtube_url}
+              onChange={(e) => setBlogForm({ ...blogForm, youtube_url: e.target.value })}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
+            />
           </div>
 
           <div>
@@ -2455,21 +2486,59 @@ export default function AdminDashboard() {
               required
               value={blogForm.summary}
               onChange={(e) => setBlogForm({ ...blogForm, summary: e.target.value })}
-              placeholder="Tóm tắt nội dung bài viết..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium resize-none"
+              placeholder="Tóm tắt ngắn gọn 1-2 câu để người đọc nắm nhanh nội dung chính..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium resize-none text-xs"
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Nội dung bài viết (Markdown / Chi tiết)</label>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+              <label className="font-bold text-slate-700">Nội dung bài viết chi tiết</label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] text-slate-400 font-medium mr-1">Chèn nhanh:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = '\n📌 Tiêu đề mục: ';
+                    setBlogForm(prev => ({ ...prev, content: (prev.content ? prev.content + '\n' : '') + text }));
+                  }}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                >
+                  + Tiêu đề mục
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = '\n• Ý chính / gạch đầu dòng: ';
+                    setBlogForm(prev => ({ ...prev, content: (prev.content ? prev.content + '\n' : '') + text }));
+                  }}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                >
+                  + Gạch đầu dòng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = '\n💡 Lưu ý quan trọng: ';
+                    setBlogForm(prev => ({ ...prev, content: (prev.content ? prev.content + '\n' : '') + text }));
+                  }}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                >
+                  + Lưu ý
+                </button>
+              </div>
+            </div>
             <textarea
-              rows={6}
+              rows={8}
               required
               value={blogForm.content}
               onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
-              placeholder="Nội dung bài viết đầy đủ..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium resize-none font-mono text-xs"
+              placeholder="Viết nội dung tự nhiên tại đây (ví dụ: chia thành các đoạn văn, gạch đầu dòng, lời khuyên thực tế... Người đọc sẽ nhìn thấy định dạng văn bản trực quan rõ ràng)."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium resize-none text-xs leading-relaxed"
             />
+            <p className="text-[11px] text-slate-400 mt-1">
+              💡 Bạn chỉ cần gõ văn bản tự nhiên, xuống dòng chia đoạn hoặc dùng các nút chèn nhanh ở trên mà không cần học bất kỳ cú pháp kỹ thuật nào.
+            </p>
           </div>
 
           <div className="flex items-center gap-2 pt-2">

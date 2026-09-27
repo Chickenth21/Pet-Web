@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import DriveImage from '../common/DriveImage';
+import ImageUploader from '../common/ImageUploader';
 import { 
   X, 
   User, 
@@ -12,7 +13,8 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Loader2,
-  Sparkles
+  Sparkles,
+  Link as LinkIcon
 } from 'lucide-react';
 
 export default function UserProfileModal({ isOpen, onClose }) {
@@ -20,6 +22,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
   
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -191,26 +194,55 @@ export default function UserProfileModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Ảnh đại diện (Link hoặc GG Drive) */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Link ảnh đại diện
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <ImageIcon className="w-4 h-4" />
-              </div>
-              <input
-                type="url"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://... hoặc link chia sẻ Google Drive"
-                className="w-full pl-10 pr-4 py-2.5 bg-white text-slate-800 rounded-xl text-sm font-medium border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
-              />
+          {/* Ảnh đại diện: Upload trực tiếp Cloudflare R2 hoặc dán URL */}
+          <div className="space-y-3">
+            <ImageUploader
+              images={avatarUrl}
+              onChange={(val) => {
+                const finalUrl = Array.isArray(val) ? (val[0] || '') : (val || '');
+                setAvatarUrl(finalUrl);
+              }}
+              multiple={false}
+              maxFiles={1}
+              folder="avatars"
+              label="Tải ảnh đại diện từ máy tính (Nén WebP & Lưu Cloud R2)"
+            />
+
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(!showUrlInput)}
+                className="text-[11px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <LinkIcon className="w-3 h-3" />
+                <span>{showUrlInput ? 'Thu gọn ô dán link URL' : 'Hoặc dán link ảnh / link Google Drive'}</span>
+              </button>
+
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl('')}
+                  className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
+                >
+                  Gỡ ảnh hiện tại
+                </button>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Hỗ trợ link ảnh trực tiếp (JPG, PNG, WebP) hoặc link chia sẻ công khai từ Google Drive.
-            </p>
+
+            {showUrlInput && (
+              <div className="relative animate-in fade-in duration-150">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <ImageIcon className="w-4 h-4" />
+                </div>
+                <input
+                  type="url"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  placeholder="https://... hoặc link chia sẻ Google Drive"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 text-slate-800 rounded-xl text-xs font-medium border border-slate-200 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
+                />
+              </div>
+            )}
           </div>
 
           {/* Nút hành động */}

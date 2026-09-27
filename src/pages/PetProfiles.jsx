@@ -87,82 +87,101 @@ export default function PetProfiles() {
       </div>
 
       {/* Danh sách thẻ thú cưng */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pets.map((pet) => {
-          const isActive = activePet?.id === pet.id;
-          return (
-            <div
-              key={pet.id}
-              onClick={() => setActivePet(pet)}
-              className={`bg-white rounded-3xl p-6 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                isActive
-                  ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
-                  : 'border-slate-200/80 shadow-sm hover:shadow-card'
-              }`}
-            >
-              {isActive && (
-                <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl uppercase tracking-wider">
-                  Đang chọn
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                    <DriveImage
-                      src={pet.avatar_url}
-                      alt={pet.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-lg text-slate-900">{pet.name}</h3>
-                    <p className="text-xs text-amber-600 font-semibold">{pet.breed}</p>
-                    <span className="inline-block text-[11px] text-slate-400 mt-0.5">
-                      {pet.species === 'cat' ? '🐱 Mèo' : '🐶 Chó'} • {pet.gender === 'male' ? 'Đực' : pet.gender === 'female' ? 'Cái' : 'Chưa rõ'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Các chỉ số tóm tắt */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                  <div className="p-2.5 rounded-xl bg-slate-50 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Tuổi</span>
-                      <span className="font-bold text-slate-700">{pet.age_months ? `${Math.floor(pet.age_months / 12)} tuổi` : '1 tuổi'}</span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-50 flex items-center gap-2">
-                    <Scale className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Cân nặng đầu</span>
-                      <span className="font-bold text-slate-700">{pet.initial_weight || '4.5'} kg</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ghi chú dị ứng */}
-                {pet.allergies && (
-                  <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-100 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                    <div className="text-xs">
-                      <span className="font-bold text-rose-800">Dị ứng: </span>
-                      <span className="text-rose-700">{pet.allergies}</span>
-                    </div>
+      {pets.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 border border-slate-200/80 text-center space-y-4 shadow-xs">
+          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto text-amber-500">
+            <PawPrint className="w-8 h-8" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="text-lg font-bold text-slate-800">Chưa có hồ sơ thú cưng nào</h3>
+            <p className="text-sm text-slate-500">Thêm hồ sơ thú cưng để theo dõi sức khỏe, cân nặng và nhận tư vấn dinh dưỡng AI cá nhân hóa.</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm bé cưng đầu tiên</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {pets.map((pet) => {
+            const isActive = activePet?.id === pet.id;
+            return (
+              <div
+                key={pet.id}
+                onClick={() => setActivePet(pet)}
+                className={`bg-white rounded-3xl p-6 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  isActive
+                    ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
+                    : 'border-slate-200/80 shadow-sm hover:shadow-card'
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                    Đang chọn
                   </div>
                 )}
-              </div>
 
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className={`font-semibold ${isActive ? 'text-amber-600' : 'text-slate-400'}`}>
-                  {isActive ? '✓ Đang kết nối AI & Thể trạng' : 'Nhấn để chọn bé này'}
-                </span>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                      <DriveImage
+                        src={pet.avatar_url}
+                        alt={pet.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-lg text-slate-900">{pet.name}</h3>
+                      <p className="text-xs text-amber-600 font-semibold">{pet.breed}</p>
+                      <span className="inline-block text-[11px] text-slate-400 mt-0.5">
+                        {pet.species === 'cat' ? '🐱 Mèo' : '🐶 Chó'} • {pet.gender === 'male' ? 'Đực' : pet.gender === 'female' ? 'Cái' : 'Chưa rõ'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Các chỉ số tóm tắt */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div className="p-2.5 rounded-xl bg-slate-50 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400" />
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Tuổi</span>
+                        <span className="font-bold text-slate-700">{pet.age_months ? `${Math.floor(pet.age_months / 12)} tuổi` : '1 tuổi'}</span>
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-slate-400" />
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Cân nặng đầu</span>
+                        <span className="font-bold text-slate-700">{pet.initial_weight || '4.5'} kg</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ghi chú dị ứng */}
+                  {pet.allergies && (
+                    <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-100 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <span className="font-bold text-rose-800">Dị ứng: </span>
+                        <span className="text-rose-700">{pet.allergies}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className={`font-semibold ${isActive ? 'text-amber-600' : 'text-slate-400'}`}>
+                    {isActive ? '✓ Đang kết nối AI & Thể trạng' : 'Nhấn để chọn bé này'}
+                  </span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Modal Thêm Thú Cưng Mới */}
       <Modal

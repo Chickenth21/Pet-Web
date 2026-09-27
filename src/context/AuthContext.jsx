@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
         setUser(adminUser);
         setToken('admin-token');
         localStorage.setItem('petpaw_user', JSON.stringify(adminUser));
+        localStorage.setItem('petpaw_token', 'admin-token');
         return { success: true };
       }
       return { success: false, message: err.message };
@@ -64,6 +65,29 @@ export function AuthProvider({ children }) {
       localStorage.setItem('petpaw_user', JSON.stringify(data.data.user));
       localStorage.setItem('petpaw_token', data.data.token);
       return { success: true };
+    } catch (err) {
+      return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async ({ credential, demoUser }) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential, demoUser })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+
+      setUser(data.data.user);
+      setToken(data.data.token);
+      localStorage.setItem('petpaw_user', JSON.stringify(data.data.user));
+      localStorage.setItem('petpaw_token', data.data.token);
+      return { success: true, message: data.message, user: data.data.user };
     } catch (err) {
       return { success: false, message: err.message };
     } finally {
@@ -136,6 +160,7 @@ export function AuthProvider({ children }) {
       token, 
       login, 
       register, 
+      loginWithGoogle,
       logout, 
       updateProfile, 
       changePassword, 

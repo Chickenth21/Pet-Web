@@ -182,7 +182,12 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {featuredPets.length === 0 ? (
+          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-500 text-sm">
+            Hiện chưa có thú cưng nào được đăng bán. Các bé cưng mới sẽ sớm xuất hiện!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {featuredPets.map((pet) => (
             <Link
               key={pet.id}
@@ -254,6 +259,7 @@ export default function Home() {
             </Link>
           ))}
         </div>
+      )}
       </section>
 
       {/* 3. CÁC TÍNH NĂNG CHỦ ĐẠO (Features Grid) */}
@@ -336,7 +342,12 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {featuredProducts.length === 0 ? (
+          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-500 text-sm">
+            Hiện chưa có sản phẩm nào được đăng tải. Hãy ghé lại sau nhé!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {featuredProducts.map((prod) => (
             <div key={prod.id} className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-sm hover:shadow-card transition-all flex flex-col justify-between">
               <div>
@@ -388,6 +399,7 @@ export default function Home() {
             </div>
           ))}
         </div>
+      )}
       </section>
 
       {/* 4. CẨM NANG & BLOG MỚI NHẤT */}
@@ -402,7 +414,12 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {recentBlogs.length === 0 ? (
+          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-500 text-sm">
+            Hiện chưa có bài viết cẩm nang nào. Nội dung mới sẽ được cập nhật sớm!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {recentBlogs.map((blog) => (
             <Link
               key={blog.id}
@@ -438,6 +455,7 @@ export default function Home() {
             </Link>
           ))}
         </div>
+      )}
       </section>
 
     </div>

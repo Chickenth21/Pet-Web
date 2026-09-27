@@ -44,6 +44,57 @@ export default function BlogDetail() {
     );
   }
 
+  const renderBlogContent = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return <div key={idx} className="h-2" />;
+      }
+      // Tiêu đề mục: bắt đầu bằng ##, ###, 📌, hoặc các số mục 1., 2. ngắn gọn
+      if (
+        trimmed.startsWith('## ') ||
+        trimmed.startsWith('### ') ||
+        trimmed.startsWith('📌') ||
+        (/^(\d+\.|[I|V|X]+\.)\s+[A-ZÀ-Ỹ]/i.test(trimmed) && trimmed.length < 90)
+      ) {
+        const cleanHeading = trimmed.replace(/^#+\s*/, '').replace(/^📌\s*/, '');
+        return (
+          <h2 key={idx} className="text-base sm:text-lg font-bold text-slate-900 mt-6 mb-2 flex items-center gap-2">
+            <span className="w-1.5 h-4 bg-amber-500 rounded-full inline-block shrink-0" />
+            <span>{cleanHeading}</span>
+          </h2>
+        );
+      }
+      // Gạch đầu dòng: bắt đầu bằng •, -, *
+      if (trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        const cleanBullet = trimmed.replace(/^[•\-\*]\s*/, '');
+        return (
+          <div key={idx} className="flex items-start gap-2.5 ml-2 sm:ml-4 text-slate-700 text-sm leading-relaxed my-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0" />
+            <span>{cleanBullet}</span>
+          </div>
+        );
+      }
+      // Khối lưu ý nổi bật: bắt đầu bằng 💡, Lưu ý:, hoặc >
+      if (trimmed.startsWith('💡') || trimmed.toLowerCase().startsWith('lưu ý:') || trimmed.startsWith('> ')) {
+        const cleanNote = trimmed.replace(/^>\s*/, '');
+        return (
+          <div key={idx} className="p-4 my-3 rounded-2xl bg-amber-50/80 border-l-4 border-amber-500 text-amber-950 text-sm font-medium leading-relaxed shadow-2xs">
+            {cleanNote}
+          </div>
+        );
+      }
+      // Đoạn văn thông thường
+      return (
+        <p key={idx} className="text-slate-700 text-sm leading-relaxed my-1">
+          {trimmed}
+        </p>
+      );
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
       
@@ -99,9 +150,9 @@ export default function BlogDetail() {
         </div>
       )}
 
-      {/* Nội dung bài viết */}
-      <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed whitespace-pre-line space-y-4 pt-4">
-        {post.content}
+      {/* Nội dung bài viết tự nhiên, trực quan */}
+      <div className="text-slate-700 text-sm leading-relaxed pt-2 space-y-1">
+        {renderBlogContent(post.content)}
       </div>
 
       {/* Thẻ tags */}
