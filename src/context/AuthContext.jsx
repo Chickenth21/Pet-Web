@@ -6,16 +6,42 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('petpaw_user');
-    return saved ? JSON.parse(saved) : {
-      id: '22222222-2222-2222-2222-222222222222',
-      full_name: 'Nguyễn Văn An',
-      email: 'khachhang@petpaw.vn',
-      role: 'user'
-    };
+    try {
+      const saved = localStorage.getItem('petpaw_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
-  const [token, setToken] = useState(() => localStorage.getItem('petpaw_token') || 'demo-token');
+  const [token, setToken] = useState(() => localStorage.getItem('petpaw_token') || null);
   const [loading, setLoading] = useState(false);
+
+  // Tự động kiểm tra tính hợp lệ của token khi khởi động ứng dụng
+  useEffect(() => {
+    const verifySession = async () => {
+      const savedToken = localStorage.getItem('petpaw_token');
+      if (!savedToken) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/profile`, {
+          headers: { Authorization: `Bearer ${savedToken}` }
+        });
+        if (res.status === 401) {
+          logout();
+        } else {
+          const data = await res.json();
+          if (data.success && data.data) {
+            setUser(data.data);
+            localStorage.setItem('petpaw_user', JSON.stringify(data.data));
+          }
+        }
+      } catch {
+        // Giữ nguyên phiên nếu máy chủ tạm thời không thể kết nối mạng
+      }
+    };
+
+    verifySession();
+  }, []);
 
   const login = async (email, password) => {
     setLoading(true);
@@ -26,24 +52,15 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message);
+      if (!data.success) throw new Error(data.message || 'Đăng nhập không thành công');
 
       setUser(data.data.user);
       setToken(data.data.token);
       localStorage.setItem('petpaw_user', JSON.stringify(data.data.user));
       localStorage.setItem('petpaw_token', data.data.token);
-      return { success: true };
+      return { success: true, user: data.data.user };
     } catch (err) {
-      // Demo mock fallback if offline
-      if (email === 'admin@petpaw.vn') {
-        const adminUser = { id: '11111111-1111-1111-1111-111111111111', full_name: 'Quản Trị Viên Pet Paw', email, role: 'admin' };
-        setUser(adminUser);
-        setToken('admin-token');
-        localStorage.setItem('petpaw_user', JSON.stringify(adminUser));
-        localStorage.setItem('petpaw_token', 'admin-token');
-        return { success: true };
-      }
-      return { success: false, message: err.message };
+      return { success: false, message: err.message || 'Lỗi kết nối máy chủ' };
     } finally {
       setLoading(false);
     }

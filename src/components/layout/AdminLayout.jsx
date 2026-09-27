@@ -15,8 +15,12 @@ import {
   UserCheck,
   Radio,
   BookOpen,
-  PawPrint,
-  Sparkles
+  PawPrint, 
+  Sparkles,
+  Mail,
+  Key,
+  Users,
+  Stethoscope
 } from 'lucide-react';
 
 
@@ -26,45 +30,107 @@ export default function AdminLayout() {
   const { user, isAdmin, isAuthenticated, login, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
-  // Xử lý đăng nhập nhanh Admin nếu người dùng đang ở tài khoản khách
-  const handleQuickAdminLogin = async () => {
+  // Xử lý đăng nhập Quản trị viên bằng tài khoản thực
+  const handleAdminLoginForm = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!loginEmail || !loginPassword) {
+      setLoginError('Vui lòng nhập đầy đủ Email và Mật khẩu.');
+      return;
+    }
     setLoginLoading(true);
-    await login('admin@petpaw.vn', 'Admin@123');
+    const res = await login(loginEmail.trim(), loginPassword);
+    if (!res.success) {
+      setLoginError(res.message || 'Email hoặc mật khẩu không chính xác.');
+    } else if (res.user?.role !== 'admin') {
+      setLoginError('Tài khoản này không có quyền Quản trị viên (Admin).');
+    }
     setLoginLoading(false);
   };
 
-  // Màn hình Chặn truy cập nếu không phải Admin
+  // Màn hình Đăng nhập Quản trị viên nếu chưa xác thực quyền Admin
   if (!isAuthenticated || !isAdmin) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl text-center space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto">
-            <Lock className="w-8 h-8" />
-          </div>
-          
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white">Khu Vực Quản Trị Hệ Thống</h1>
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-black text-white">Đăng Nhập Quản Trị Hệ Thống</h1>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Trang này được tách biệt hoàn toàn và chỉ dành cho Quản trị viên (Admin). Bạn hiện đang đăng nhập với tư cách: <strong className="text-amber-400">{user?.email || 'Chưa đăng nhập'}</strong>
+              Khu vực dành riêng cho Quản trị viên Pet Paw. Vui lòng đăng nhập bằng tài khoản Quản trị để tiếp tục.
             </p>
+            {isAuthenticated && !isAdmin && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300">
+                Tài khoản hiện tại (<strong>{user?.email}</strong>) không có quyền Quản trị viên.
+              </div>
+            )}
           </div>
 
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={handleQuickAdminLogin}
-              disabled={loginLoading}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>{loginLoading ? 'Đang chuyển quyền...' : 'Chuyển sang tài khoản Admin Demo'}</span>
-            </button>
+          {loginError && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs font-bold text-rose-400 text-center animate-fade-in">
+              {loginError}
+            </div>
+          )}
 
+          <form onSubmit={handleAdminLoginForm} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">Email Quản trị viên</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="admin@petpaw.vn"
+                  required
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">Mật khẩu</label>
+              <div className="relative">
+                <Key className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loginLoading}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+            >
+              {loginLoading ? (
+                <span>Đang xác thực...</span>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Xác Thực & Vào Quản Trị</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-slate-700/60 text-center">
             <Link
               to="/"
-              className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-xl text-xs transition-all flex items-center justify-center gap-2 block"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 font-semibold transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span>Quay về trang khách hàng</span>
             </Link>
           </div>
@@ -78,6 +144,8 @@ export default function AdminLayout() {
 
   const menuItems = [
     { id: 'overview', label: 'Tổng quan hệ thống', path: '/admin', icon: LayoutDashboard },
+    { id: 'users', label: 'Phân quyền & Tài khoản', path: '/admin?tab=users', icon: Users },
+    { id: 'locations', label: 'Bệnh viện & Tiệm Spa', path: '/admin?tab=locations', icon: Stethoscope },
     { id: 'breeds', label: 'Quản lý Giống Chó & Mèo', path: '/admin?tab=breeds', icon: Sparkles },
     { id: 'pet-sales', label: 'Quản lý Thú Cưng Bán', path: '/admin?tab=pet-sales', icon: PawPrint },
     { id: 'products', label: 'Quản lý Phụ kiện & Hạt', path: '/admin?tab=products', icon: ShoppingBag },

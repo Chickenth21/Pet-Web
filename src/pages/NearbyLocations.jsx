@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Pagination from '../components/common/Pagination';
 import { 
   MapPin, 
@@ -9,13 +9,15 @@ import {
   ShieldCheck, 
   Scissors, 
   Stethoscope, 
-  Search 
+  Search,
+  Loader2
 } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const LOCATIONS_DATA = [
+const DEFAULT_LOCATIONS = [
   {
-    id: 1,
+    id: '1',
     name: 'Bệnh Viện Thú Y PetCare 24/7',
     type: 'clinic',
     address: '124 Hoàng Hoa Thám, Ba Đình, Hà Nội',
@@ -28,7 +30,7 @@ const LOCATIONS_DATA = [
     services: ['Cấp cứu 24/7', 'Phẫu thuật chuyên sâu', 'Xét nghiệm máu', 'Tiêm phòng vacxin']
   },
   {
-    id: 2,
+    id: '2',
     name: 'Hệ Thống Thú Y 2Vet Clinic',
     type: 'clinic',
     address: '335 Kim Mã, Ba Đình, Hà Nội',
@@ -41,7 +43,7 @@ const LOCATIONS_DATA = [
     services: ['Siêu âm - X-quang', 'Nội trú điều trị', 'Khám da liễu', 'Triệt sản an toàn']
   },
   {
-    id: 3,
+    id: '3',
     name: 'PetSpa & Grooming House',
     type: 'spa',
     address: '56 Nguyễn Chí Thanh, Đống Đa, Hà Nội',
@@ -54,7 +56,7 @@ const LOCATIONS_DATA = [
     services: ['Tắm sấy khử mùi', 'Cắt tỉa lông tạo kiểu', 'Cắt móng vệ sinh tai', 'Khách sạn thú cưng']
   },
   {
-    id: 4,
+    id: '4',
     name: 'Phòng Khám Thú Y Gaia Pet Hospital',
     type: 'clinic',
     address: '38 Xuân Diệu, Tây Hồ, Hà Nội',
@@ -67,7 +69,7 @@ const LOCATIONS_DATA = [
     services: ['Khám tổng quát', 'Nha khoa thú cưng', 'Điều trị nội trú', 'Chăm sóc mèo chuyên sâu']
   },
   {
-    id: 5,
+    id: '5',
     name: 'Kimi Pet - Spa & Phụ Kiện Thú Cưng',
     type: 'spa',
     address: '126 Láng Hạ, Đống Đa, Hà Nội',
@@ -82,18 +84,40 @@ const LOCATIONS_DATA = [
 ];
 
 export default function NearbyLocations() {
+  const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
+  const [loading, setLoading] = useState(false);
   const [filterType, setFilterType] = useState('all'); // 'all' | 'clinic' | 'spa'
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [search, setSearch] = useState('');
 
+  // Tải danh sách địa điểm bệnh viện và tiệm spa động từ máy chủ
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`${API_BASE}/locations?limit=100`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data?.locations) && data.data.locations.length > 0) {
+          setLocations(data.data.locations);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách địa điểm từ API:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLocations();
+  }, []);
+
   // Phân trang chuẩn codebase cho Địa điểm thú y & Spa
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit, setLimit] = useState(4);
+  const [limit, setLimit] = useState(6);
 
-  const filteredLocations = LOCATIONS_DATA.filter(loc => {
+  const filteredLocations = locations.filter(loc => {
     if (filterType !== 'all' && loc.type !== filterType) return false;
     if (selectedDistrict !== 'all' && loc.district !== selectedDistrict) return false;
-    if (search && !loc.name.toLowerCase().includes(search.toLowerCase()) && !loc.address.toLowerCase().includes(search.toLowerCase())) {
+    if (search && !loc.name?.toLowerCase().includes(search.toLowerCase()) && !loc.address?.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
     return true;
@@ -177,7 +201,7 @@ export default function NearbyLocations() {
                   <span>{loc.type === 'clinic' ? 'Phòng khám Thú Y' : 'Spa & Cắt tỉa'}</span>
                 </span>
 
-                {loc.emergency24h && (
+                {(loc.emergency24h || loc.emergency_24h) && (
                   <span className="px-2 py-0.5 bg-rose-600 text-white text-[10px] font-extrabold rounded-full animate-pulse">
                     Cấp cứu 24/7
                   </span>
@@ -193,9 +217,9 @@ export default function NearbyLocations() {
                   <Star className="w-3.5 h-3.5 fill-amber-400" />
                   <span>{loc.rating}</span>
                 </div>
-                <span className="text-slate-400">({loc.reviewsCount} đánh giá)</span>
+                <span className="text-slate-400">({loc.reviewsCount ?? loc.reviews_count ?? 0} đánh giá)</span>
                 <span className="text-slate-300">•</span>
-                <span className="font-bold text-amber-600">{loc.distance}</span>
+                <span className="font-bold text-amber-600">{loc.distance || loc.district || 'Gần bạn'}</span>
               </div>
 
               <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
@@ -213,7 +237,7 @@ export default function NearbyLocations() {
 
               {/* Dịch vụ cung cấp */}
               <div className="flex flex-wrap gap-1.5 pt-3">
-                {loc.services.map((serv, idx) => (
+                {(Array.isArray(loc.services) ? loc.services : (typeof loc.services === 'string' ? loc.services.split(',').map(s => s.trim()) : [])).map((serv, idx) => (
                   <span key={idx} className="px-2 py-0.5 bg-slate-100 rounded-md text-[10px] font-medium text-slate-600">
                     {serv}
                   </span>

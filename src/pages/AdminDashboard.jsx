@@ -31,7 +31,13 @@ import {
   Copy,
   FileText,
   Search,
-  Check
+  Check,
+  Stethoscope,
+  Scissors,
+  MapPin,
+  Phone,
+  UserPlus,
+  Star
 } from 'lucide-react';
 import SearchSelect from '../components/common/SearchSelect';
 import { 
@@ -47,7 +53,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
+  const { token, login } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'overview';
 
@@ -57,6 +63,8 @@ export default function AdminDashboard() {
   const [blogs, setBlogs] = useState([]);
   const [petsForSale, setPetsForSale] = useState([]);
   const [breeds, setBreeds] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [locationsList, setLocationsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Phân trang chuẩn codebase dùng chung cho Thú cưng, Sản phẩm, Bài viết & Giống loài
@@ -73,6 +81,46 @@ export default function AdminDashboard() {
   const [breedLimit, setBreedLimit] = useState(10);
   const [breedSpeciesFilter, setBreedSpeciesFilter] = useState('all'); // 'all', 'dog', 'cat'
   const [breedSearch, setBreedSearch] = useState('');
+
+  // Phân quyền & Quản lý Tài khoản (User & Role RBAC)
+  const [userPage, setUserPage] = useState(1);
+  const [userLimit, setUserLimit] = useState(10);
+  const [userRoleFilter, setUserRoleFilter] = useState('all'); // 'all', 'admin', 'user', 'guest'
+  const [userStatusFilter, setUserStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+  const [userSearch, setUserSearch] = useState('');
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userFormData, setUserFormData] = useState({
+    email: '',
+    password: '',
+    full_name: '',
+    role: 'user',
+    is_active: true
+  });
+
+  // Quản lý Bệnh Viện Thú Y & Tiệm Spa (Pet Hospitals & Spas CRUD)
+  const [locationPage, setLocationPage] = useState(1);
+  const [locationLimit, setLocationLimit] = useState(10);
+  const [locationTypeFilter, setLocationTypeFilter] = useState('all'); // 'all', 'clinic', 'spa'
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [locationFormData, setLocationFormData] = useState({
+    name: '',
+    type: 'clinic',
+    address: '',
+    district: '',
+    city: 'Hà Nội',
+    phone: '',
+    rating: 5.0,
+    reviews_count: 0,
+    emergency_24h: false,
+    distance: '',
+    image_url: '',
+    services: '',
+    description: '',
+    is_active: true
+  });
 
   // Dữ liệu phân trang hiển thị theo trang hiện tại
   const paginatedPetsForSale = React.useMemo(() => {
@@ -110,6 +158,52 @@ export default function AdminDashboard() {
     const start = (breedPage - 1) * breedLimit;
     return filteredBreeds.slice(start, start + breedLimit);
   }, [filteredBreeds, breedPage, breedLimit]);
+
+  const filteredUsers = React.useMemo(() => {
+    let result = usersList;
+    if (userRoleFilter !== 'all') {
+      result = result.filter(u => u.role === userRoleFilter);
+    }
+    if (userStatusFilter !== 'all') {
+      const isActive = userStatusFilter === 'active';
+      result = result.filter(u => u.is_active === isActive);
+    }
+    if (userSearch.trim()) {
+      const q = userSearch.toLowerCase().trim();
+      result = result.filter(u => 
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.full_name && u.full_name.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [usersList, userRoleFilter, userStatusFilter, userSearch]);
+
+  const paginatedUsers = React.useMemo(() => {
+    const start = (userPage - 1) * userLimit;
+    return filteredUsers.slice(start, start + userLimit);
+  }, [filteredUsers, userPage, userLimit]);
+
+  const filteredLocations = React.useMemo(() => {
+    let result = locationsList;
+    if (locationTypeFilter !== 'all') {
+      result = result.filter(l => l.type === locationTypeFilter);
+    }
+    if (locationSearch.trim()) {
+      const q = locationSearch.toLowerCase().trim();
+      result = result.filter(l => 
+        (l.name && l.name.toLowerCase().includes(q)) ||
+        (l.address && l.address.toLowerCase().includes(q)) ||
+        (l.district && l.district.toLowerCase().includes(q)) ||
+        (l.phone && l.phone.includes(q))
+      );
+    }
+    return result;
+  }, [locationsList, locationTypeFilter, locationSearch]);
+
+  const paginatedLocations = React.useMemo(() => {
+    const start = (locationPage - 1) * locationLimit;
+    return filteredLocations.slice(start, start + locationLimit);
+  }, [filteredLocations, locationPage, locationLimit]);
   
   // Thông báo trạng thái tương tác
   const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
@@ -192,7 +286,7 @@ export default function AdminDashboard() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [dashRes, petRes, prodRes, catRes, blogRes, breedRes] = await Promise.all([
+      const [dashRes, petRes, prodRes, catRes, blogRes, breedRes, userRes, locRes] = await Promise.all([
         fetch(`${API_BASE}/admin/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -204,6 +298,12 @@ export default function AdminDashboard() {
         }),
         fetch(`${API_BASE}/admin/breeds`, {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/admin/users?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/admin/locations?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
@@ -213,12 +313,16 @@ export default function AdminDashboard() {
       const cats = await catRes.json();
       const blgs = await blogRes.json();
       const breedData = await breedRes.json();
+      const userData = await userRes.json();
+      const locData = await locRes.json();
 
       if (dash.success) setStats(dash.data);
       if (petData.success) setPetsForSale(petData.data.pets);
       if (prods.success) setProducts(prods.data.products);
       if (cats.success) setCategories(cats.data);
       if (blgs.success) setBlogs(blgs.data || []);
+      if (userData.success) setUsersList(userData.data.users || []);
+      if (locData.success) setLocationsList(locData.data.locations || []);
       if (breedData.success) {
         setBreeds(breedData.data.breeds || []);
       } else {
@@ -242,6 +346,282 @@ export default function AdminDashboard() {
   const showNotification = (text, type = 'success') => {
     setFeedbackMessage({ type, text });
     setTimeout(() => setFeedbackMessage({ type: '', text: '' }), 5000);
+  };
+
+  const handleReLoginAdmin = async () => {
+    showNotification('Đang làm mới phiên làm việc quản trị viên...', 'info');
+    const res = await login('admin@petpaw.vn', 'Admin@123');
+    if (res.success) {
+      showNotification('✅ Đã làm mới phiên đăng nhập Admin thành công!');
+      fetchAllData();
+    } else {
+      showNotification('Không thể tự động đăng nhập: ' + (res.message || 'Vui lòng thử lại'), 'error');
+    }
+  };
+
+  // --- HÀNH ĐỘNG QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN (USER & ROLE RBAC) ---
+  const handleOpenUserModal = (usr = null) => {
+    if (usr) {
+      setEditingUser(usr);
+      setUserFormData({
+        email: usr.email || '',
+        password: '',
+        full_name: usr.full_name || '',
+        role: usr.role || 'user',
+        is_active: usr.is_active !== false
+      });
+    } else {
+      setEditingUser(null);
+      setUserFormData({
+        email: '',
+        password: '',
+        full_name: '',
+        role: 'user',
+        is_active: true
+      });
+    }
+    setUserModalOpen(true);
+  };
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    if (!editingUser && (!userFormData.email || !userFormData.password || !userFormData.full_name)) {
+      showNotification('Vui lòng nhập đầy đủ Email, Mật khẩu và Họ tên!', 'error');
+      return;
+    }
+
+    try {
+      if (editingUser) {
+        if (editingUser.role !== userFormData.role) {
+          await handleUpdateUserRole(editingUser.id, userFormData.role, false);
+        }
+        if (editingUser.is_active !== userFormData.is_active) {
+          await handleToggleUserStatus(editingUser.id, false);
+        }
+        showNotification('✅ Đã cập nhật tài khoản thành công!');
+      } else {
+        const res = await fetch(`${API_BASE}/admin/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(userFormData)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        setUsersList(prev => [data.data, ...prev]);
+        showNotification('✅ Tạo tài khoản mới thành công!');
+      }
+      setUserModalOpen(false);
+      fetchAllData();
+    } catch (err) {
+      showNotification('Lỗi khi lưu tài khoản: ' + err.message, 'error');
+    }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole, shouldNotify = true) => {
+    const oldList = [...usersList];
+    setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setUsersList(oldList);
+        showNotification('Không thể đổi quyền: ' + data.message, 'error');
+        return;
+      }
+      if (shouldNotify) {
+        showNotification(`✅ Đã phân quyền thành công: ${newRole}`);
+      }
+    } catch (err) {
+      setUsersList(oldList);
+      showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
+    }
+  };
+
+  const handleToggleUserStatus = async (userId, shouldNotify = true) => {
+    const oldList = [...usersList];
+    setUsersList(prev => prev.map(u => u.id === userId ? { ...u, is_active: !u.is_active } : u));
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setUsersList(oldList);
+        showNotification('Không thể đổi trạng thái: ' + data.message, 'error');
+        return;
+      }
+      if (shouldNotify) {
+        showNotification(data.data.is_active ? '✅ Đã kích hoạt tài khoản' : '🔒 Đã khóa tài khoản');
+      }
+    } catch (err) {
+      setUsersList(oldList);
+      showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống? Hành động này không thể hoàn tác.')) return;
+    const oldList = [...usersList];
+    setUsersList(prev => prev.filter(u => u.id !== userId));
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setUsersList(oldList);
+        showNotification('Không thể xóa: ' + data.message, 'error');
+        return;
+      }
+      showNotification('✅ Đã xóa tài khoản người dùng thành công');
+    } catch (err) {
+      setUsersList(oldList);
+      showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
+    }
+  };
+
+  // --- HÀNH ĐỘNG QUẢN LÝ BỆNH VIỆN THÚ Y & TIỆM SPA (LOCATIONS CRUD) ---
+  const handleOpenLocationModal = (loc = null) => {
+    if (loc) {
+      setEditingLocation(loc);
+      setLocationFormData({
+        name: loc.name || '',
+        type: loc.type || 'clinic',
+        address: loc.address || '',
+        district: loc.district || '',
+        city: loc.city || 'Hà Nội',
+        phone: loc.phone || '',
+        rating: loc.rating || 5.0,
+        reviews_count: loc.reviews_count ?? loc.reviewsCount ?? 0,
+        emergency_24h: Boolean(loc.emergency_24h ?? loc.emergency24h),
+        distance: loc.distance || '',
+        image_url: loc.image_url || '',
+        services: Array.isArray(loc.services) ? loc.services.join(', ') : (loc.services || ''),
+        description: loc.description || '',
+        is_active: loc.is_active !== false
+      });
+    } else {
+      setEditingLocation(null);
+      setLocationFormData({
+        name: '',
+        type: 'clinic',
+        address: '',
+        district: '',
+        city: 'Hà Nội',
+        phone: '',
+        rating: 5.0,
+        reviews_count: 0,
+        emergency_24h: false,
+        distance: '',
+        image_url: '',
+        services: '',
+        description: '',
+        is_active: true
+      });
+    }
+    setLocationModalOpen(true);
+  };
+
+  const handleSaveLocation = async (e) => {
+    e.preventDefault();
+    if (!locationFormData.name) {
+      showNotification('Vui lòng nhập tên bệnh viện hoặc tiệm spa!', 'error');
+      return;
+    }
+
+    const payload = {
+      ...locationFormData,
+      services: locationFormData.services.split(',').map(s => s.trim()).filter(Boolean)
+    };
+
+    try {
+      if (editingLocation) {
+        const res = await fetch(`${API_BASE}/admin/locations/${editingLocation.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        setLocationsList(prev => prev.map(l => l.id === editingLocation.id ? data.data : l));
+        showNotification('✅ Đã cập nhật cơ sở thú y / spa thành công!');
+      } else {
+        const res = await fetch(`${API_BASE}/admin/locations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        setLocationsList(prev => [data.data, ...prev]);
+        showNotification('✅ Đã thêm cơ sở mới thành công!');
+      }
+      setLocationModalOpen(false);
+      fetchAllData();
+    } catch (err) {
+      showNotification('Lỗi khi lưu cơ sở: ' + err.message, 'error');
+    }
+  };
+
+  const handleToggleLocationActive = async (locId) => {
+    const oldList = [...locationsList];
+    setLocationsList(prev => prev.map(l => l.id === locId ? { ...l, is_active: !l.is_active } : l));
+    try {
+      const res = await fetch(`${API_BASE}/admin/locations/${locId}/toggle-active`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setLocationsList(oldList);
+        showNotification('Không thể đổi trạng thái: ' + data.message, 'error');
+        return;
+      }
+      showNotification(data.data.is_active ? '✅ Đã kích hoạt hiển thị cơ sở' : '👁️ Đã tạm ẩn cơ sở');
+    } catch (err) {
+      setLocationsList(oldList);
+      showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteLocation = async (locId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa cơ sở này?')) return;
+    const oldList = [...locationsList];
+    setLocationsList(prev => prev.filter(l => l.id !== locId));
+    try {
+      const res = await fetch(`${API_BASE}/admin/locations/${locId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setLocationsList(oldList);
+        showNotification('Không thể xóa: ' + data.message, 'error');
+        return;
+      }
+      showNotification('✅ Đã xóa cơ sở thú y / spa thành công');
+    } catch (err) {
+      setLocationsList(oldList);
+      showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
+    }
   };
 
   // --- HÀNH ĐỘNG QUẢN LÝ THÚ CƯNG BÁN (CRUD & ĐA ẢNH) ---
@@ -1332,6 +1712,242 @@ export default function AdminDashboard() {
     }
   ];
 
+  // Cấu hình cột Tài khoản & Phân quyền cho DataTable
+  const userColumns = [
+    {
+      key: 'full_name',
+      title: 'Tài khoản & Người dùng',
+      render: (_, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center font-extrabold text-sm shrink-0 overflow-hidden">
+            {row.avatar_url ? (
+              <img src={row.avatar_url} alt={row.full_name} className="w-full h-full object-cover" />
+            ) : (
+              (row.full_name || row.email || 'U').charAt(0).toUpperCase()
+            )}
+          </div>
+          <div>
+            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+              <span>{row.full_name || 'Chưa đặt tên'}</span>
+            </div>
+            <div className="text-[11px] text-slate-400 font-medium">{row.email}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      title: 'Vai trò & Phân quyền',
+      render: (val, row) => {
+        const roleLabels = {
+          admin: { label: 'Quản trị viên (Admin)', bg: 'bg-purple-50 text-purple-700 border-purple-200' },
+          user: { label: 'Thành viên (User)', bg: 'bg-sky-50 text-sky-700 border-sky-200' },
+          guest: { label: 'Khách vãng lai (Guest)', bg: 'bg-slate-100 text-slate-600 border-slate-200' }
+        };
+        const conf = roleLabels[val] || roleLabels.user;
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-xl text-xs font-extrabold border ${conf.bg}`}>
+              {conf.label}
+            </span>
+            <select
+              value={val || 'user'}
+              onChange={(e) => handleUpdateUserRole(row.id, e.target.value)}
+              className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 font-semibold text-slate-700 hover:border-amber-500 focus:outline-none cursor-pointer"
+            >
+              <option value="admin">Admin</option>
+              <option value="user">User</option>
+              <option value="guest">Guest</option>
+            </select>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'is_active',
+      title: 'Trạng thái tài khoản',
+      width: '140px',
+      render: (val, row) => (
+        <button
+          onClick={() => handleToggleUserStatus(row.id)}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            val !== false
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+              : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+          }`}
+          title="Bấm để khóa / mở khóa tài khoản"
+        >
+          {val !== false ? <CheckCircle2 className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+          <span>{val !== false ? 'Hoạt động' : 'Đã khóa'}</span>
+        </button>
+      )
+    },
+    {
+      key: 'created_at',
+      title: 'Ngày tạo',
+      width: '120px',
+      render: (val) => (
+        <span className="text-xs text-slate-500 font-medium">
+          {val ? new Date(val).toLocaleDateString('vi-VN') : '—'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      title: 'Thao tác',
+      width: '100px',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => handleOpenUserModal(row)}
+            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+            title="Chỉnh sửa thông tin"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteUser(row.id)}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+            title="Xóa tài khoản"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+  ];
+
+  // Cấu hình cột Bệnh viện & Tiệm Spa cho DataTable
+  const locationColumns = [
+    {
+      key: 'name',
+      title: 'Cơ sở & Phân loại',
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center font-extrabold text-sm shrink-0 overflow-hidden">
+            {row.image_url ? (
+              <img src={row.image_url} alt={val} className="w-full h-full object-cover" />
+            ) : row.type === 'clinic' ? (
+              <Stethoscope className="w-5 h-5 text-rose-500" />
+            ) : (
+              <Scissors className="w-5 h-5 text-teal-500" />
+            )}
+          </div>
+          <div>
+            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-2">
+              <span>{val}</span>
+              {(row.emergency_24h || row.emergency24h) && (
+                <span className="px-1.5 py-0.5 bg-rose-600 text-white text-[9px] font-black rounded-md animate-pulse">
+                  24/7
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+              <span className={`px-2 py-0.2 rounded-md font-extrabold text-[10px] ${
+                row.type === 'clinic' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-700'
+              }`}>
+                {row.type === 'clinic' ? '🏥 Phòng khám thú y' : '✂️ Spa & Grooming'}
+              </span>
+              <span>•</span>
+              <span className="font-medium text-slate-400">{row.district || row.city || 'Hà Nội'}</span>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'address',
+      title: 'Địa chỉ & Hotline',
+      render: (val, row) => (
+        <div className="space-y-0.5">
+          <div className="text-xs font-semibold text-slate-700 line-clamp-1">{val || 'Chưa cập nhật'}</div>
+          <div className="text-[11px] font-bold text-amber-700">{row.phone || 'Chưa có SĐT'}</div>
+        </div>
+      )
+    },
+    {
+      key: 'rating',
+      title: 'Đánh giá',
+      width: '120px',
+      render: (val, row) => (
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
+            <Star className="w-3.5 h-3.5 fill-amber-400" />
+            <span>{val || 5.0}</span>
+          </div>
+          <span className="text-[11px] text-slate-400">({row.reviews_count ?? row.reviewsCount ?? 0})</span>
+        </div>
+      )
+    },
+    {
+      key: 'services',
+      title: 'Dịch vụ tiêu biểu',
+      render: (val) => {
+        const servList = Array.isArray(val)
+          ? val
+          : (typeof val === 'string' ? val.split(',').map(s => s.trim()).filter(Boolean) : []);
+        return (
+          <div className="flex flex-wrap gap-1 max-w-xs">
+            {servList.slice(0, 3).map((s, idx) => (
+              <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-medium">
+                {s}
+              </span>
+            ))}
+            {servList.length > 3 && (
+              <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">
+                +{servList.length - 3}
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      key: 'is_active',
+      title: 'Trạng thái Web khách',
+      width: '130px',
+      render: (val, row) => (
+        <button
+          onClick={() => handleToggleLocationActive(row.id)}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            val !== false
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+              : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+          }`}
+          title="Bấm để ẩn / hiện trên trang khách"
+        >
+          {val !== false ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+          <span>{val !== false ? 'Hiển thị' : 'Tạm ẩn'}</span>
+        </button>
+      )
+    },
+    {
+      key: 'actions',
+      title: 'Thao tác',
+      width: '100px',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => handleOpenLocationModal(row)}
+            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+            title="Chỉnh sửa cơ sở"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteLocation(row.id)}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+            title="Xóa cơ sở"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+  ];
+
   const clickData = [
     { name: 'Shopee', clicks: stats?.summary?.shopeeClicks ?? 0, fill: '#EE4D2D' },
     { name: 'TikTok Shop', clicks: stats?.summary?.tiktokClicks ?? 0, fill: '#1e293b' }
@@ -1369,15 +1985,197 @@ export default function AdminDashboard() {
         <div className={`p-4 rounded-2xl text-xs font-bold flex items-center justify-between shadow-sm animate-fade-in ${
           feedbackMessage.type === 'error' 
             ? 'bg-rose-50 border border-rose-200 text-rose-800' 
+            : feedbackMessage.type === 'info'
+            ? 'bg-sky-50 border border-sky-200 text-sky-800'
             : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
         }`}>
-          <span>{feedbackMessage.text}</span>
-          <button onClick={() => setFeedbackMessage({ type: '', text: '' })} className="underline text-xs ml-4">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span>{feedbackMessage.text}</span>
+            {feedbackMessage.text.includes('Phiên đăng nhập') && (
+              <button
+                type="button"
+                onClick={handleReLoginAdmin}
+                className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-extrabold shadow-sm cursor-pointer transition-all active:scale-95"
+              >
+                Đăng nhập lại Admin
+              </button>
+            )}
+          </div>
+          <button onClick={() => setFeedbackMessage({ type: '', text: '' })} className="underline text-xs ml-4 cursor-pointer shrink-0">
             Đóng
           </button>
         </div>
       )}
 
+
+      {/* --- TAB PHÂN QUYỀN & QUẢN LÝ TÀI KHOẢN --- */}
+      {currentTab === 'users' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-500" />
+                <span>Phân Quyền & Quản Lý Tài Khoản (User & Role RBAC)</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Quản lý danh sách tài khoản, phân quyền linh hoạt (Admin / User / Guest) và kiểm soát trạng thái kích hoạt trực tiếp từ hệ thống.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => handleOpenUserModal()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer self-start sm:self-auto"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Thêm tài khoản mới</span>
+            </button>
+          </div>
+
+          {/* Filter Bar & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 mr-1">Vai trò:</span>
+              {[
+                { id: 'all', label: 'Tất cả' },
+                { id: 'admin', label: '👑 Quản trị viên' },
+                { id: 'user', label: '👤 Thành viên' },
+                { id: 'guest', label: '🌐 Khách vãng lai' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setUserRoleFilter(f.id);
+                    setUserPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    userRoleFilter === f.id
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={userSearch}
+                onChange={(e) => {
+                  setUserSearch(e.target.value);
+                  setUserPage(1);
+                }}
+                placeholder="Tìm theo email, họ tên..."
+                className="w-full pl-9 pr-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <DataTable
+            columns={userColumns}
+            data={paginatedUsers}
+            isLoading={loading}
+            emptyMessage="Không tìm thấy tài khoản người dùng nào."
+            pagination={{
+              currentPage: userPage,
+              totalPages: Math.ceil(filteredUsers.length / userLimit) || 1,
+              totalItems: filteredUsers.length,
+              limit: userLimit,
+              onPageChange: (p) => setUserPage(p),
+              onLimitChange: (l) => {
+                setUserLimit(l);
+                setUserPage(1);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* --- TAB BỆNH VIỆN THÚ Y & TIỆM SPA --- */}
+      {currentTab === 'locations' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Stethoscope className="w-5 h-5 text-amber-500" />
+                <span>Quản Lý Bệnh Viện Thú Y & Tiệm Spa Grooming</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Quản lý các bệnh viện thú y cấp cứu 24/7 và cơ sở spa, grooming hiển thị trực tiếp trên trang khách hàng (/nearby).
+              </p>
+            </div>
+            
+            <button
+              onClick={() => handleOpenLocationModal()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm cơ sở mới</span>
+            </button>
+          </div>
+
+          {/* Filter Bar & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 mr-1">Phân loại:</span>
+              {[
+                { id: 'all', label: 'Tất cả cơ sở' },
+                { id: 'clinic', label: '🏥 Bệnh viện / Phòng khám' },
+                { id: 'spa', label: '✂️ Tiệm Spa & Grooming' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setLocationTypeFilter(f.id);
+                    setLocationPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    locationTypeFilter === f.id
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={locationSearch}
+                onChange={(e) => {
+                  setLocationSearch(e.target.value);
+                  setLocationPage(1);
+                }}
+                placeholder="Tìm tên cơ sở, địa chỉ, hotline..."
+                className="w-full pl-9 pr-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <DataTable
+            columns={locationColumns}
+            data={paginatedLocations}
+            isLoading={loading}
+            emptyMessage="Không tìm thấy cơ sở thú y hoặc spa nào phù hợp."
+            pagination={{
+              currentPage: locationPage,
+              totalPages: Math.ceil(filteredLocations.length / locationLimit) || 1,
+              totalItems: filteredLocations.length,
+              limit: locationLimit,
+              onPageChange: (p) => setLocationPage(p),
+              onLimitChange: (l) => {
+                setLocationLimit(l);
+                setLocationPage(1);
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* --- TAB 1: TỔNG QUAN HỆ THỐNG --- */}
       {currentTab === 'overview' && (
@@ -2567,6 +3365,306 @@ export default function AdminDashboard() {
               className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
             >
               {editingBlog ? 'Lưu cập nhật' : 'Xuất bản bài viết'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* --- MODAL THÊM / SỬA TÀI KHOẢN & PHÂN QUYỀN --- */}
+      <Modal
+        isOpen={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        title={editingUser ? 'Chỉnh Sửa Tài Khoản & Phân Quyền' : 'Thêm Mới Tài Khoản Hệ Thống'}
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleSaveUser} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Địa chỉ Email <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="email"
+              required
+              disabled={Boolean(editingUser)}
+              value={userFormData.email}
+              onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+              placeholder="nguyenvana@gmail.com"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs disabled:opacity-60 disabled:bg-slate-100"
+            />
+            {editingUser && (
+              <p className="text-[11px] text-slate-400 mt-1">Email được cố định để đảm bảo tính toàn vẹn xác thực tài khoản.</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Họ và tên <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={userFormData.full_name}
+              onChange={(e) => setUserFormData({ ...userFormData, full_name: e.target.value })}
+              placeholder="Nguyễn Văn A"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+            />
+          </div>
+
+          {!editingUser && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Mật khẩu khởi tạo <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={userFormData.password}
+                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                placeholder="Tối thiểu 6 ký tự..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Vai trò & Quyền hạn hệ thống <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={userFormData.role}
+              onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-bold text-xs"
+            >
+              <option value="user">👤 Thành viên thông thường (User)</option>
+              <option value="admin">👑 Quản trị viên toàn quyền (Admin)</option>
+              <option value="guest">🌐 Khách vãng lai (Guest)</option>
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              • Quản trị viên: Toàn quyền truy cập bảng điều khiển Admin, quản lý sản phẩm, cẩm nang, tài khoản và bệnh viện.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="user_is_active"
+              checked={userFormData.is_active}
+              onChange={(e) => setUserFormData({ ...userFormData, is_active: e.target.checked })}
+              className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-400"
+            />
+            <label htmlFor="user_is_active" className="font-bold text-xs text-slate-800 cursor-pointer">
+              Kích hoạt tài khoản ngay (Cho phép đăng nhập)
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setUserModalOpen(false)}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors text-xs"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer text-xs"
+            >
+              {editingUser ? 'Lưu thay đổi' : 'Tạo tài khoản'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* --- MODAL THÊM / SỬA BỆNH VIỆN THÚ Y & TIỆM SPA --- */}
+      <Modal
+        isOpen={locationModalOpen}
+        onClose={() => setLocationModalOpen(false)}
+        title={editingLocation ? 'Chỉnh Sửa Cơ Sở Thú Y / Spa' : 'Thêm Mới Bệnh Viện Thú Y & Tiệm Spa'}
+        maxWidth="max-w-2xl"
+      >
+        <form onSubmit={handleSaveLocation} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Phân loại cơ sở <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={locationFormData.type}
+                onChange={(e) => setLocationFormData({ ...locationFormData, type: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-bold text-xs"
+              >
+                <option value="clinic">🏥 Bệnh viện / Phòng khám thú y</option>
+                <option value="spa">✂️ Tiệm Spa, Grooming & Khách sạn</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Tên cơ sở <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={locationFormData.name}
+                onChange={(e) => setLocationFormData({ ...locationFormData, name: e.target.value })}
+                placeholder="VD: Bệnh Viện Thú Y PetCare 24/7"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Địa chỉ chi tiết <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={locationFormData.address}
+                onChange={(e) => setLocationFormData({ ...locationFormData, address: e.target.value })}
+                placeholder="VD: 124 Hoàng Hoa Thám, Ba Đình, Hà Nội"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Quận / Huyện
+              </label>
+              <input
+                type="text"
+                value={locationFormData.district}
+                onChange={(e) => setLocationFormData({ ...locationFormData, district: e.target.value })}
+                placeholder="VD: Ba Đình"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Hotline liên hệ
+              </label>
+              <input
+                type="text"
+                value={locationFormData.phone}
+                onChange={(e) => setLocationFormData({ ...locationFormData, phone: e.target.value })}
+                placeholder="VD: 024 3823 4567"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Điểm đánh giá sao (1.0 - 5.0)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="1.0"
+                max="5.0"
+                value={locationFormData.rating}
+                onChange={(e) => setLocationFormData({ ...locationFormData, rating: parseFloat(e.target.value) || 5.0 })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Số lượt đánh giá
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={locationFormData.reviews_count}
+                onChange={(e) => setLocationFormData({ ...locationFormData, reviews_count: parseInt(e.target.value, 10) || 0 })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Ảnh cơ sở (URL ảnh hoặc Google Drive)
+            </label>
+            <input
+              type="url"
+              value={locationFormData.image_url}
+              onChange={(e) => setLocationFormData({ ...locationFormData, image_url: e.target.value })}
+              placeholder="https://..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Các dịch vụ cung cấp (Nhập phân cách bằng dấu phẩy)
+            </label>
+            <input
+              type="text"
+              value={locationFormData.services}
+              onChange={(e) => setLocationFormData({ ...locationFormData, services: e.target.value })}
+              placeholder="Cấp cứu 24/7, Phẫu thuật, Tắm sấy khử mùi, Cắt tỉa lông, Tiêm phòng..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Mô tả chi tiết / Tiện ích cơ sở
+            </label>
+            <textarea
+              rows={3}
+              value={locationFormData.description}
+              onChange={(e) => setLocationFormData({ ...locationFormData, description: e.target.value })}
+              placeholder="Giới thiệu đội ngũ bác sĩ, máy móc trang thiết bị, thời gian tiếp nhận..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium resize-none text-xs leading-relaxed"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="flex items-center gap-2 p-3 bg-rose-50/60 border border-rose-200/80 rounded-2xl">
+              <input
+                type="checkbox"
+                id="loc_emergency_24h"
+                checked={locationFormData.emergency_24h}
+                onChange={(e) => setLocationFormData({ ...locationFormData, emergency_24h: e.target.checked })}
+                className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
+              />
+              <label htmlFor="loc_emergency_24h" className="font-bold text-xs text-rose-900 cursor-pointer">
+                🚑 Trực cấp cứu 24/7 (Hiển thị nhãn khẩn cấp)
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+              <input
+                type="checkbox"
+                id="loc_is_active"
+                checked={locationFormData.is_active}
+                onChange={(e) => setLocationFormData({ ...locationFormData, is_active: e.target.checked })}
+                className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-400"
+              />
+              <label htmlFor="loc_is_active" className="font-bold text-xs text-slate-800 cursor-pointer">
+                👁️ Hiển thị trên bản đồ trang khách (`/nearby`)
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setLocationModalOpen(false)}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors text-xs"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer text-xs"
+            >
+              {editingLocation ? 'Lưu thay đổi' : 'Thêm cơ sở'}
             </button>
           </div>
         </form>
