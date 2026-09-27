@@ -22,11 +22,6 @@ export default function Login() {
     }
   };
 
-  const handleQuickLogin = (demoEmail, demoPass) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-  };
-
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200/80 shadow-card space-y-6">
@@ -99,28 +94,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Tài khoản mẫu tiện thử nghiệm */}
-        <div className="pt-4 border-t border-slate-100 space-y-2">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
-            Chọn nhanh tài khoản Demo:
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@petpaw.vn', 'Admin@123')}
-              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-semibold transition-colors text-center"
-            >
-              👑 Admin Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('khachhang@petpaw.vn', 'User@123')}
-              className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-semibold transition-colors text-center"
-            >
-              🐾 Khách hàng Demo
-            </button>
-          </div>
-        </div>
 
         <p className="text-xs text-center text-slate-500">
           Chưa có tài khoản?{' '}

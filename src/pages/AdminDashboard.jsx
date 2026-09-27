@@ -348,16 +348,6 @@ export default function AdminDashboard() {
     setTimeout(() => setFeedbackMessage({ type: '', text: '' }), 5000);
   };
 
-  const handleReLoginAdmin = async () => {
-    showNotification('Đang làm mới phiên làm việc quản trị viên...', 'info');
-    const res = await login('admin@petpaw.vn', 'Admin@123');
-    if (res.success) {
-      showNotification('✅ Đã làm mới phiên đăng nhập Admin thành công!');
-      fetchAllData();
-    } else {
-      showNotification('Không thể tự động đăng nhập: ' + (res.message || 'Vui lòng thử lại'), 'error');
-    }
-  };
 
   // --- HÀNH ĐỘNG QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN (USER & ROLE RBAC) ---
   const handleOpenUserModal = (usr = null) => {
