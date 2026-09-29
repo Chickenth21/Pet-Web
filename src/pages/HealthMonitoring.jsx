@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/common/DataTable';
 import Modal from '../components/common/Modal';
 import Select from '../components/common/Select';
+import DriveImage from '../components/common/DriveImage';
+import ImageUploader from '../components/common/ImageUploader';
 import { 
   Activity, 
   Plus, 
@@ -16,7 +18,11 @@ import {
   Calendar,
   Sparkles,
   Info,
-  ShieldAlert
+  ShieldAlert,
+  PawPrint,
+  Heart,
+  ChevronRight,
+  UserCheck
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -31,12 +37,61 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function HealthMonitoring() {
-  const { activePet, pets } = usePet();
-  const { token } = useAuth();
+  const { activePet, pets, setActivePet, addPet } = usePet();
+  const { token, isAuthenticated } = useAuth();
   
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddPetModalOpen, setIsAddPetModalOpen] = useState(false);
+  const [submittingPet, setSubmittingPet] = useState(false);
+
+  // Form tạo hồ sơ thú cưng mới trực tiếp tại màn theo dõi sức khỏe
+  const [petFormData, setPetFormData] = useState({
+    name: '',
+    species: 'dog',
+    breed: '',
+    gender: 'male',
+    age_months: 12,
+    initial_weight: '',
+    activity_level: 'medium',
+    avatar_url: '',
+    allergies: '',
+    health_notes: ''
+  });
+
+  const handleCreatePet = async (e) => {
+    e.preventDefault();
+    if (!petFormData.name || !petFormData.breed) {
+      alert('Vui lòng nhập tên và giống thú cưng!');
+      return;
+    }
+    setSubmittingPet(true);
+    try {
+      await addPet({
+        ...petFormData,
+        initial_weight: parseFloat(petFormData.initial_weight) || 4.5,
+        age_months: parseInt(petFormData.age_months, 10) || 12
+      });
+      setIsAddPetModalOpen(false);
+      setPetFormData({
+        name: '',
+        species: 'dog',
+        breed: '',
+        gender: 'male',
+        age_months: 12,
+        initial_weight: '',
+        activity_level: 'medium',
+        avatar_url: '',
+        allergies: '',
+        health_notes: ''
+      });
+    } catch (err) {
+      alert('Lỗi khi thêm hồ sơ thú cưng: ' + err.message);
+    } finally {
+      setSubmittingPet(false);
+    }
+  };
 
   // Phân trang chuẩn codebase cho lịch sử đo chỉ số
   const [recordPage, setRecordPage] = useState(1);
@@ -49,7 +104,6 @@ export default function HealthMonitoring() {
   }, [data?.records, recordPage, recordLimit]);
 
   // Form thêm bản ghi
-
   const [formRecord, setFormRecord] = useState({
     weight: '',
     height: '',
@@ -130,10 +184,272 @@ export default function HealthMonitoring() {
 
   if (!activePet) {
     return (
-      <div className="max-w-md mx-auto py-20 text-center space-y-4">
-        <Activity className="w-12 h-12 text-amber-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-800">Chưa chọn thú cưng</h2>
-        <p className="text-xs text-slate-500">Vui lòng tạo hoặc chọn một hồ sơ thú cưng để bắt đầu theo dõi sức khỏe.</p>
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        {pets && pets.length > 0 ? (
+          /* Trường hợp đã có thú cưng nhưng chưa chọn bé nào */
+          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-sm text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto">
+              <PawPrint className="w-8 h-8" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">Chọn Thú Cưng Để Bắt Đầu Theo Dõi Sức Khỏe</h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                Bạn đã có sẵn hồ sơ thú cưng. Vui lòng bấm chọn một bé bên dưới để bắt đầu ghi nhận và theo dõi thể trạng:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-left">
+              {pets.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => setActivePet(p)}
+                  className="p-4 bg-slate-50 hover:bg-amber-50/50 border border-slate-200 hover:border-amber-400 rounded-2xl transition-all cursor-pointer flex items-center gap-3.5 group shadow-2xs"
+                >
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-slate-200 shrink-0">
+                    <DriveImage src={p.avatar_url} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-amber-700 truncate">
+                      {p.name}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {p.species === 'cat' ? '🐱 Mèo' : '🐶 Chó'} • {p.breed}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all" />
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-center">
+              <button
+                onClick={() => setIsAddPetModalOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm một bé cưng khác</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Trường hợp chưa có hồ sơ thú cưng nào */
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-card text-center space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-md shadow-amber-500/20">
+              <Activity className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-2 max-w-lg mx-auto">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+                Chưa Có Hồ Sơ Thú Cưng Nào
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                Để bắt đầu theo dõi cân nặng, đánh giá thể trạng cơ thể theo thang chuẩn quốc tế và nhận diện sớm các nguy cơ sức khỏe, vui lòng tạo hồ sơ cho bé cưng của bạn.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setIsAddPetModalOpen(true)}
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-2xl font-black text-sm shadow-md shadow-amber-500/20 transition-all cursor-pointer transform hover:-translate-y-0.5"
+              >
+                <Plus className="w-5 h-5" />
+                <span>+ Thêm Hồ Sơ Thú Cưng Ngay</span>
+              </button>
+            </div>
+
+            {!isAuthenticated && (
+              <p className="text-[11px] text-slate-400 italic">
+                💡 Đăng nhập hoặc tạo tài khoản để đồng bộ vĩnh viễn dữ liệu theo dõi sức khỏe của thú cưng.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Modal Thêm Thú Cưng Mới */}
+        <Modal
+          isOpen={isAddPetModalOpen}
+          onClose={() => setIsAddPetModalOpen(false)}
+          title="Thêm Hồ Sơ Thú Cưng Của Bạn"
+          maxWidth="max-w-xl"
+        >
+          <form onSubmit={handleCreatePet} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Loài thú cưng <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPetFormData({ ...petFormData, species: 'cat' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      petFormData.species === 'cat'
+                        ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    🐱 Mèo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPetFormData({ ...petFormData, species: 'dog' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      petFormData.species === 'dog'
+                        ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    🐶 Chó
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Tên thú cưng <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={petFormData.name}
+                  onChange={(e) => setPetFormData({ ...petFormData, name: e.target.value })}
+                  placeholder="VD: Miu Miu, Bông, Lu..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Giống thú cưng <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={petFormData.breed}
+                  onChange={(e) => setPetFormData({ ...petFormData, breed: e.target.value })}
+                  placeholder={petFormData.species === 'cat' ? 'VD: Mèo Anh lông ngắn, Ba Tư...' : 'VD: Poodle, Corgi, Golden...'}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Giới tính
+                </label>
+                <select
+                  value={petFormData.gender}
+                  onChange={(e) => setPetFormData({ ...petFormData, gender: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="male">Đực</option>
+                  <option value="female">Cái</option>
+                  <option value="unknown">Chưa rõ</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Tuổi (tháng)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={petFormData.age_months}
+                  onChange={(e) => setPetFormData({ ...petFormData, age_months: e.target.value })}
+                  placeholder="12"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Cân nặng ban đầu (kg)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={petFormData.initial_weight}
+                  onChange={(e) => setPetFormData({ ...petFormData, initial_weight: e.target.value })}
+                  placeholder="4.5"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Mức vận động
+                </label>
+                <select
+                  value={petFormData.activity_level}
+                  onChange={(e) => setPetFormData({ ...petFormData, activity_level: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="low">Thấp (lười vận động)</option>
+                  <option value="medium">Vừa phải</option>
+                  <option value="high">Cao (năng động)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <ImageUploader
+                images={petFormData.avatar_url}
+                onChange={(url) => setPetFormData(prev => ({ ...prev, avatar_url: url }))}
+                multiple={false}
+                folder="pets"
+                label="Ảnh đại diện bé cưng (Tải ảnh từ máy - Nén WebP tự động)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Tiền sử dị ứng thức ăn (nếu có)
+              </label>
+              <input
+                type="text"
+                value={petFormData.allergies}
+                onChange={(e) => setPetFormData({ ...petFormData, allergies: e.target.value })}
+                placeholder="VD: Hải sản, thịt bò, ngũ cốc gluten..."
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Ghi chú sức khỏe / lịch tiêm phòng
+              </label>
+              <textarea
+                rows="2"
+                value={petFormData.health_notes}
+                onChange={(e) => setPetFormData({ ...petFormData, health_notes: e.target.value })}
+                placeholder="Ghi chú về tiền sử bệnh, lịch tiêm phòng 7 bệnh..."
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsAddPetModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={submittingPet}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+              >
+                {submittingPet ? 'Đang lưu...' : 'Lưu hồ sơ thú cưng'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       </div>
     );
   }
@@ -186,6 +502,48 @@ export default function HealthMonitoring() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
+      {/* 0. Thanh chọn nhanh thú cưng (Pet Switcher Bar) */}
+      {pets && pets.length > 0 && (
+        <div className="bg-white p-3.5 rounded-3xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
+            <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1.5 shrink-0">
+              <PawPrint className="w-3.5 h-3.5 text-amber-500" />
+              <span>Thú cưng:</span>
+            </span>
+            {pets.map((p) => {
+              const isSelected = p.id === activePet?.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setActivePet(p)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <div className="w-5 h-5 rounded-lg overflow-hidden bg-white shrink-0 border border-slate-200/60">
+                    <DriveImage src={p.avatar_url} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                  <span>{p.name}</span>
+                  <span className="text-[10px] opacity-75">{p.species === 'cat' ? '🐱' : '🐶'}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAddPetModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Thêm bé khác</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. Header màn hình theo dõi sức khỏe */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -508,6 +866,192 @@ export default function HealthMonitoring() {
               className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow-sm"
             >
               Lưu chỉ số đo
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Thêm Thú Cưng Mới (Cho người dùng đang theo dõi bấm 'Thêm bé khác') */}
+      <Modal
+        isOpen={isAddPetModalOpen}
+        onClose={() => setIsAddPetModalOpen(false)}
+        title="Thêm Hồ Sơ Thú Cưng Của Bạn"
+        maxWidth="max-w-xl"
+      >
+        <form onSubmit={handleCreatePet} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Loài thú cưng <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPetFormData({ ...petFormData, species: 'cat' })}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    petFormData.species === 'cat'
+                      ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  🐱 Mèo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPetFormData({ ...petFormData, species: 'dog' })}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    petFormData.species === 'dog'
+                      ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  🐶 Chó
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Tên thú cưng <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={petFormData.name}
+                onChange={(e) => setPetFormData({ ...petFormData, name: e.target.value })}
+                placeholder="VD: Miu Miu, Bông, Lu..."
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Giống thú cưng <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={petFormData.breed}
+                onChange={(e) => setPetFormData({ ...petFormData, breed: e.target.value })}
+                placeholder={petFormData.species === 'cat' ? 'VD: Mèo Anh lông ngắn, Ba Tư...' : 'VD: Poodle, Corgi, Golden...'}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Giới tính
+              </label>
+              <select
+                value={petFormData.gender}
+                onChange={(e) => setPetFormData({ ...petFormData, gender: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:outline-none focus:border-amber-500"
+              >
+                <option value="male">Đực</option>
+                <option value="female">Cái</option>
+                <option value="unknown">Chưa rõ</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Tuổi (tháng)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={petFormData.age_months}
+                onChange={(e) => setPetFormData({ ...petFormData, age_months: e.target.value })}
+                placeholder="12"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Cân nặng ban đầu (kg)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={petFormData.initial_weight}
+                onChange={(e) => setPetFormData({ ...petFormData, initial_weight: e.target.value })}
+                placeholder="4.5"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Mức vận động
+              </label>
+              <select
+                value={petFormData.activity_level}
+                onChange={(e) => setPetFormData({ ...petFormData, activity_level: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:outline-none focus:border-amber-500"
+              >
+                <option value="low">Thấp (lười vận động)</option>
+                <option value="medium">Vừa phải</option>
+                <option value="high">Cao (năng động)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <ImageUploader
+              images={petFormData.avatar_url}
+              onChange={(url) => setPetFormData(prev => ({ ...prev, avatar_url: url }))}
+              multiple={false}
+              folder="pets"
+              label="Ảnh đại diện bé cưng (Tải ảnh từ máy - Nén WebP tự động)"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Tiền sử dị ứng thức ăn (nếu có)
+            </label>
+            <input
+              type="text"
+              value={petFormData.allergies}
+              onChange={(e) => setPetFormData({ ...petFormData, allergies: e.target.value })}
+              placeholder="VD: Hải sản, thịt bò, ngũ cốc gluten..."
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Ghi chú sức khỏe / lịch tiêm phòng
+            </label>
+            <textarea
+              rows="2"
+              value={petFormData.health_notes}
+              onChange={(e) => setPetFormData({ ...petFormData, health_notes: e.target.value })}
+              placeholder="Ghi chú về tiền sử bệnh, lịch tiêm phòng 7 bệnh..."
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsAddPetModalOpen(false)}
+              className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={submittingPet}
+              className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              {submittingPet ? 'Đang lưu...' : 'Lưu hồ sơ thú cưng'}
             </button>
           </div>
         </form>

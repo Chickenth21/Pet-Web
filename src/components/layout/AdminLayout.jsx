@@ -20,7 +20,8 @@ import {
   Mail,
   Key,
   Users,
-  Stethoscope
+  Stethoscope,
+  HeartPulse
 } from 'lucide-react';
 
 
@@ -145,6 +146,7 @@ export default function AdminLayout() {
   const menuItems = [
     { id: 'overview', label: 'Tổng quan hệ thống', path: '/admin', icon: LayoutDashboard },
     { id: 'users', label: 'Phân quyền & Tài khoản', path: '/admin?tab=users', icon: Users },
+    { id: 'user-pets', label: 'Hồ sơ Thú Cưng Khách', path: '/admin?tab=user-pets', icon: HeartPulse },
     { id: 'breeds', label: 'Quản lý Giống Chó & Mèo', path: '/admin?tab=breeds', icon: Sparkles },
     { id: 'pet-sales', label: 'Quản lý Thú Cưng Bán', path: '/admin?tab=pet-sales', icon: PawPrint },
     { id: 'products', label: 'Quản lý Phụ kiện & Hạt', path: '/admin?tab=products', icon: ShoppingBag },

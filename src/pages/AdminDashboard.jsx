@@ -37,7 +37,9 @@ import {
   MapPin,
   Phone,
   UserPlus,
-  Star
+  Star,
+  HeartPulse,
+  Activity
 } from 'lucide-react';
 import SearchSelect from '../components/common/SearchSelect';
 import { 
@@ -65,6 +67,14 @@ export default function AdminDashboard() {
   const [breeds, setBreeds] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
+  const [userPetsList, setUserPetsList] = useState([]);
+  const [userPetPage, setUserPetPage] = useState(1);
+  const [userPetLimit, setUserPetLimit] = useState(10);
+  const [userPetSpeciesFilter, setUserPetSpeciesFilter] = useState('all'); // 'all', 'dog', 'cat'
+  const [userPetSearch, setUserPetSearch] = useState('');
+  const [selectedPetHealthModal, setSelectedPetHealthModal] = useState(null);
+  const [petHealthDetails, setPetHealthDetails] = useState(null);
+  const [loadingPetHealth, setLoadingPetHealth] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Phân trang chuẩn codebase dùng chung cho Thú cưng, Sản phẩm, Bài viết & Giống loài
@@ -204,6 +214,29 @@ export default function AdminDashboard() {
     const start = (locationPage - 1) * locationLimit;
     return filteredLocations.slice(start, start + locationLimit);
   }, [filteredLocations, locationPage, locationLimit]);
+
+  // Lọc và phân trang cho Hồ sơ Thú cưng Khách hàng (User Pets)
+  const filteredUserPets = React.useMemo(() => {
+    let result = [...userPetsList];
+    if (userPetSpeciesFilter !== 'all') {
+      result = result.filter(p => p.species === userPetSpeciesFilter);
+    }
+    if (userPetSearch.trim()) {
+      const q = userPetSearch.toLowerCase().trim();
+      result = result.filter(p => 
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.breed && p.breed.toLowerCase().includes(q)) ||
+        (p.owner_name && p.owner_name.toLowerCase().includes(q)) ||
+        (p.owner_email && p.owner_email.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [userPetsList, userPetSpeciesFilter, userPetSearch]);
+
+  const paginatedUserPets = React.useMemo(() => {
+    const start = (userPetPage - 1) * userPetLimit;
+    return filteredUserPets.slice(start, start + userPetLimit);
+  }, [filteredUserPets, userPetPage, userPetLimit]);
   
   // Thông báo trạng thái tương tác
   const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
@@ -286,7 +319,7 @@ export default function AdminDashboard() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [dashRes, petRes, prodRes, catRes, blogRes, breedRes, userRes, locRes] = await Promise.all([
+      const [dashRes, petRes, prodRes, catRes, blogRes, breedRes, userRes, locRes, userPetsRes] = await Promise.all([
         fetch(`${API_BASE}/admin/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -304,6 +337,9 @@ export default function AdminDashboard() {
         }),
         fetch(`${API_BASE}/admin/locations?limit=100`, {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/admin/user-pets?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
@@ -315,6 +351,7 @@ export default function AdminDashboard() {
       const breedData = await breedRes.json();
       const userData = await userRes.json();
       const locData = await locRes.json();
+      const userPetsData = await userPetsRes.json();
 
       if (dash.success) setStats(dash.data);
       if (petData.success) setPetsForSale(petData.data.pets);
@@ -323,6 +360,7 @@ export default function AdminDashboard() {
       if (blgs.success) setBlogs(blgs.data || []);
       if (userData.success) setUsersList(userData.data.users || []);
       if (locData.success) setLocationsList(locData.data.locations || []);
+      if (userPetsData.success) setUserPetsList(userPetsData.data.pets || []);
       if (breedData.success) {
         setBreeds(breedData.data.breeds || []);
       } else {
@@ -610,6 +648,48 @@ export default function AdminDashboard() {
       showNotification('✅ Đã xóa cơ sở thú y / spa thành công');
     } catch (err) {
       setLocationsList(oldList);
+      showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
+    }
+  };
+
+  // --- HÀNH ĐỘNG QUẢN LÝ HỒ SƠ THÚ CƯNG KHÁCH HÀNG & THỂ TRẠNG ---
+  const handleViewPetHealth = async (pet) => {
+    setSelectedPetHealthModal(pet);
+    setLoadingPetHealth(true);
+    setPetHealthDetails(null);
+    try {
+      const res = await fetch(`${API_BASE}/admin/user-pets/${pet.id}/health`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPetHealthDetails(data.data);
+      }
+    } catch (err) {
+      showNotification('Lỗi khi tải lịch sử đo thể trạng: ' + err.message, 'error');
+    } finally {
+      setLoadingPetHealth(false);
+    }
+  };
+
+  const handleDeleteUserPet = async (petId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa hồ sơ thú cưng này của khách hàng?')) return;
+    const oldList = [...userPetsList];
+    setUserPetsList(prev => prev.filter(p => p.id !== petId));
+    try {
+      const res = await fetch(`${API_BASE}/admin/user-pets/${petId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setUserPetsList(oldList);
+        showNotification('Không thể xóa hồ sơ: ' + data.message, 'error');
+        return;
+      }
+      showNotification('✅ Đã xóa hồ sơ thú cưng thành công!');
+    } catch (err) {
+      setUserPetsList(oldList);
       showNotification('Lỗi kết nối máy chủ: ' + err.message, 'error');
     }
   };
@@ -1808,6 +1888,104 @@ export default function AdminDashboard() {
     }
   ];
 
+  // Cấu hình cột Hồ sơ Thú cưng Khách hàng cho DataTable
+  const userPetColumns = [
+    {
+      key: 'name',
+      title: 'Thú cưng',
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center font-extrabold text-sm shrink-0 overflow-hidden">
+            {row.avatar_url ? (
+              <DriveImage src={row.avatar_url} alt={val} className="w-full h-full object-cover" />
+            ) : (
+              <PawPrint className="w-5 h-5 text-amber-500" />
+            )}
+          </div>
+          <div>
+            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+              <span>{val}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-semibold">
+                {row.gender === 'male' ? 'Đực' : row.gender === 'female' ? 'Cái' : 'Chưa rõ'}
+              </span>
+            </div>
+            <div className="text-[11px] text-amber-600 font-semibold mt-0.5">
+              {row.species === 'cat' ? '🐱 Mèo' : '🐶 Chó'} • {row.breed}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'owner',
+      title: 'Chủ sở hữu (Khách hàng)',
+      render: (_, row) => (
+        <div className="space-y-0.5">
+          <div className="text-xs font-bold text-slate-800">{row.owner_name || 'Khách hàng'}</div>
+          <div className="text-[11px] text-slate-400">{row.owner_email || '—'}</div>
+        </div>
+      )
+    },
+    {
+      key: 'age_weight',
+      title: 'Tuổi & Cân nặng',
+      render: (_, row) => (
+        <div className="space-y-0.5 text-xs">
+          <div className="text-slate-600 font-medium">
+            {row.age_months ? `${row.age_months} tháng tuổi` : 'Chưa rõ tuổi'}
+          </div>
+          <div className="font-bold text-amber-600">
+            {row.latest_weight ? `${row.latest_weight} kg` : (row.initial_weight ? `${row.initial_weight} kg` : '—')}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'health_records_count',
+      title: 'Số lần đo thể trạng',
+      width: '150px',
+      render: (val) => (
+        <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+          {val || 0} lần ghi nhận
+        </span>
+      )
+    },
+    {
+      key: 'created_at',
+      title: 'Ngày tạo hồ sơ',
+      width: '130px',
+      render: (val) => (
+        <span className="text-xs text-slate-500 font-medium">
+          {val ? new Date(val).toLocaleDateString('vi-VN') : '—'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      title: 'Thao tác',
+      width: '100px',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => handleViewPetHealth(row)}
+            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+            title="Xem chi tiết thể trạng & chỉ số"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteUserPet(row.id)}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+            title="Xóa hồ sơ thú cưng"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+  ];
+
   // Cấu hình cột Bệnh viện & Tiệm Spa cho DataTable
   const locationColumns = [
     {
@@ -1817,7 +1995,7 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center font-extrabold text-sm shrink-0 overflow-hidden">
             {row.image_url ? (
-              <img src={row.image_url} alt={val} className="w-full h-full object-cover" />
+              <DriveImage src={row.image_url} alt={val} className="w-full h-full object-cover" />
             ) : row.type === 'clinic' ? (
               <Stethoscope className="w-5 h-5 text-rose-500" />
             ) : (
@@ -2077,6 +2255,86 @@ export default function AdminDashboard() {
               onLimitChange: (l) => {
                 setUserLimit(l);
                 setUserPage(1);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* --- TAB HỒ SƠ THÚ CƯNG KHÁCH HÀNG & THỂ TRẠNG --- */}
+      {currentTab === 'user-pets' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <HeartPulse className="w-5 h-5 text-amber-500" />
+                <span>Quản Lý Hồ Sơ Thú Cưng & Thể Trạng Khách Hàng</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Kiểm soát toàn bộ hồ sơ thú cưng được khách hàng tạo, theo dõi lịch sử đo chỉ số cân nặng, thể trạng BCS và cảnh báo sức khỏe.
+              </p>
+            </div>
+            
+            <div className="px-3.5 py-1.5 bg-amber-50 border border-amber-200/80 text-amber-900 rounded-xl text-xs font-bold self-start sm:self-auto">
+              🐾 Tổng cộng: <span className="font-extrabold">{userPetsList.length}</span> hồ sơ
+            </div>
+          </div>
+
+          {/* Filter Bar & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 mr-1">Loài:</span>
+              {[
+                { id: 'all', label: 'Tất cả' },
+                { id: 'dog', label: '🐶 Chó' },
+                { id: 'cat', label: '🐱 Mèo' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setUserPetSpeciesFilter(f.id);
+                    setUserPetPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    userPetSpeciesFilter === f.id
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={userPetSearch}
+                onChange={(e) => {
+                  setUserPetSearch(e.target.value);
+                  setUserPetPage(1);
+                }}
+                placeholder="Tìm tên bé, giống, chủ nuôi..."
+                className="w-full pl-9 pr-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-amber-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <DataTable
+            columns={userPetColumns}
+            data={paginatedUserPets}
+            isLoading={loading}
+            emptyMessage="Không tìm thấy hồ sơ thú cưng nào của khách hàng."
+            pagination={{
+              currentPage: userPetPage,
+              totalPages: Math.ceil(filteredUserPets.length / userPetLimit) || 1,
+              totalItems: filteredUserPets.length,
+              limit: userPetLimit,
+              onPageChange: (p) => setUserPetPage(p),
+              onLimitChange: (l) => {
+                setUserPetLimit(l);
+                setUserPetPage(1);
               }
             }}
           />
@@ -3576,15 +3834,12 @@ export default function AdminDashboard() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Ảnh cơ sở (URL ảnh hoặc Google Drive)
-            </label>
-            <input
-              type="url"
-              value={locationFormData.image_url}
-              onChange={(e) => setLocationFormData({ ...locationFormData, image_url: e.target.value })}
-              placeholder="https://..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-500 font-medium text-xs"
+            <ImageUploader
+              images={locationFormData.image_url}
+              onChange={(url) => setLocationFormData(prev => ({ ...prev, image_url: url }))}
+              multiple={false}
+              folder="locations"
+              label="Ảnh cơ sở thú y / spa (Tải ảnh từ máy - Tự động nén WebP)"
             />
           </div>
 
@@ -3660,6 +3915,133 @@ export default function AdminDashboard() {
         </form>
       </Modal>
 
+      {/* --- MODAL XEM CHI TIẾT THỂ TRẠNG & SỨC KHỎE THÚ CƯNG KHÁCH --- */}
+      <Modal
+        isOpen={Boolean(selectedPetHealthModal)}
+        onClose={() => {
+          setSelectedPetHealthModal(null);
+          setPetHealthDetails(null);
+        }}
+        title={`Chi Tiết Thể Trạng: ${selectedPetHealthModal?.name || 'Thú cưng'}`}
+        maxWidth="max-w-2xl"
+      >
+        {loadingPetHealth ? (
+          <div className="py-12 text-center text-slate-400 space-y-2">
+            <RefreshCw className="w-8 h-8 animate-spin text-amber-500 mx-auto" />
+            <p className="text-xs font-bold">Đang tải lịch sử chỉ số sức khỏe...</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Header thông tin thú cưng */}
+            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-amber-200 shrink-0">
+                <DriveImage
+                  src={selectedPetHealthModal?.avatar_url}
+                  alt={selectedPetHealthModal?.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-slate-900 text-base">{selectedPetHealthModal?.name}</h3>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">
+                    {selectedPetHealthModal?.species === 'cat' ? '🐱 Mèo' : '🐶 Chó'} • {selectedPetHealthModal?.breed}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>Chủ nuôi: <strong className="text-slate-900">{selectedPetHealthModal?.owner_name || 'Khách hàng'}</strong> ({selectedPetHealthModal?.owner_email || '—'})</span>
+                  <span>•</span>
+                  <span>Tuổi: <strong>{selectedPetHealthModal?.age_months || 12} tháng</strong></span>
+                  <span>•</span>
+                  <span>Cân nặng ban đầu: <strong>{selectedPetHealthModal?.initial_weight || '—'} kg</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Đặc điểm sức khỏe */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <span className="font-bold text-slate-700 block">Tiền sử dị ứng thức ăn:</span>
+                <p className="text-slate-600 font-medium">
+                  {selectedPetHealthModal?.allergies || 'Không có ghi nhận dị ứng'}
+                </p>
+              </div>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <span className="font-bold text-slate-700 block">Ghi chú sức khỏe & tiêm phòng:</span>
+                <p className="text-slate-600 font-medium">
+                  {selectedPetHealthModal?.health_notes || 'Chưa có ghi chú đặc biệt'}
+                </p>
+              </div>
+            </div>
+
+            {/* Danh sách các lần đo chỉ số */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-amber-500" />
+                  <span>Lịch sử các lần đo chỉ số ({petHealthDetails?.records?.length || 0} lần ghi nhận)</span>
+                </h4>
+              </div>
+
+              {petHealthDetails?.records && petHealthDetails.records.length > 0 ? (
+                <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold sticky top-0">
+                      <tr>
+                        <th className="p-2.5">Ngày đo</th>
+                        <th className="p-2.5">Cân nặng</th>
+                        <th className="p-2.5">Chiều cao</th>
+                        <th className="p-2.5">Trạng thái sức khỏe</th>
+                        <th className="p-2.5">Ghi chú / Triệu chứng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {petHealthDetails.records.map((rec) => (
+                        <tr key={rec.id} className="hover:bg-slate-50/60">
+                          <td className="p-2.5 font-semibold text-slate-800">
+                            {rec.recorded_date || '—'}
+                          </td>
+                          <td className="p-2.5 font-bold text-amber-600">
+                            {rec.weight} kg
+                          </td>
+                          <td className="p-2.5 text-slate-600">
+                            {rec.height ? `${rec.height} cm` : '—'}
+                          </td>
+                          <td className="p-2.5 text-slate-700">
+                            {rec.current_health_status || 'Bình thường'}
+                          </td>
+                          <td className="p-2.5 text-slate-500 italic max-w-xs truncate">
+                            {rec.symptoms || rec.notes || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                  Chủ nuôi chưa nhập bản ghi đo thể trạng nào cho bé này.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPetHealthModal(null);
+                  setPetHealthDetails(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
     </div>
   );
 }
+
