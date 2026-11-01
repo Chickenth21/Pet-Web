@@ -147,6 +147,17 @@ export default function AIChatWidget() {
     ]);
   };
 
+  const trackAffiliate = (productId, platform, url) => {
+    try {
+      fetch(`${API_BASE}/affiliate/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, platform })
+      });
+    } catch {}
+    window.open(url, '_blank');
+  };
+
   const quickPrompts = [
     'Khẩu phần ăn hôm nay?',
     'Bé biếng ăn nên làm gì?',
@@ -314,37 +325,55 @@ export default function AIChatWidget() {
                         <span>Sản phẩm gợi ý cho bé</span>
                       </div>
                       <div className="space-y-1.5">
-                        {msg.recommendedProducts.map((prod) => (
-                          <div
-                            key={prod.id || prod.name}
-                            className="p-2 bg-white rounded-xl border border-slate-200 flex items-center gap-2 shadow-2xs hover:border-amber-300 transition-colors"
-                          >
-                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                              <DriveImage
-                                src={prod.image_url}
-                                alt={prod.name}
-                                className="w-full h-full object-cover"
-                              />
+                        {msg.recommendedProducts.map((prod) => {
+                          const prodImg = prod.images?.[0] || prod.image_url;
+                          const prodPrice = prod.reference_price ?? prod.price;
+                          const shopeeLink = prod.shopee_url || prod.affiliate_links?.shopee;
+                          const tiktokLink = prod.tiktok_url || prod.affiliate_links?.tiktok;
+
+                          return (
+                            <div
+                              key={prod.id || prod.name}
+                              className="p-2 bg-white rounded-xl border border-slate-200 flex items-center gap-2 shadow-2xs hover:border-amber-300 transition-colors"
+                            >
+                              <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                                <DriveImage
+                                  src={prodImg}
+                                  alt={prod.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-[11px] font-bold text-slate-900 truncate" title={prod.name}>{prod.name}</h4>
+                                <p className="text-[10px] text-amber-600 font-extrabold">
+                                  {prodPrice ? `${Number(prodPrice).toLocaleString('vi-VN')} đ` : 'Liên hệ'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {shopeeLink && (
+                                  <button
+                                    type="button"
+                                    onClick={() => trackAffiliate(prod.id, 'shopee', shopeeLink)}
+                                    className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                                    title="Xem trên Shopee"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                )}
+                                {tiktokLink && (
+                                  <button
+                                    type="button"
+                                    onClick={() => trackAffiliate(prod.id, 'tiktok', tiktokLink)}
+                                    className="p-1.5 rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
+                                    title="Xem trên TikTok"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-[11px] font-bold text-slate-900 truncate">{prod.name}</h4>
-                              <p className="text-[10px] text-amber-600 font-extrabold">
-                                {prod.price ? `${Number(prod.price).toLocaleString('vi-VN')} đ` : 'Liên hệ'}
-                              </p>
-                            </div>
-                            {prod.affiliate_links?.shopee && (
-                              <a
-                                href={prod.affiliate_links.shopee}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                                title="Xem trên Shopee"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

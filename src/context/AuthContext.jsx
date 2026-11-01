@@ -89,13 +89,13 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithGoogle = async ({ credential, demoUser }) => {
+  const loginWithGoogle = async ({ credential }) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential, demoUser })
+        body: JSON.stringify({ credential })
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
